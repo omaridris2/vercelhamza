@@ -144,9 +144,13 @@ const AddProductForm = ({ onClose, onSuccess }: AddProductFormProps) => {
       onSuccess?.();
       onClose();
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error creating product:', err);
-      setError(err.message || 'An unexpected error occurred');
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unexpected error occurred');
+      }
     } finally {
       setLoading(false);
     }
