@@ -346,7 +346,7 @@ const AdminTimelinePage = () => {
             ) : (
               <div className="text-center py-12 text-gray-500">
                 <div className="text-lg">No discount codes created yet</div>
-                <div className="text-sm mt-2">Click "Generate Code" to create your first discount code</div>
+                <div className="text-sm mt-2">Click &quot;Generate Code&quot; to create your first discount code</div>
               </div>
             )}
           </div>
@@ -414,7 +414,7 @@ const AdminTimelinePage = () => {
             ) : (
               <div className="text-center py-12 text-gray-500">
                 <div className="text-lg">No users created yet</div>
-                <div className="text-sm mt-2">Click "Add User" to create your first user account</div>
+                <div className="text-sm mt-2">Click &quot;Add User&quot; to create your first user account</div>
               </div>
             )}
           </div>

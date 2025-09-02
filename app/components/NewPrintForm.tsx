@@ -121,7 +121,7 @@ const AddProductForm = ({ onClose, onSuccess }: AddProductFormProps) => {
       }
 
       // 3. Insert product into database
-      const { error: insertError, data: insertData } = await supabase
+      const { error: insertError } = await supabase
         .from('products')
         .insert([{
           name: name.trim(),
