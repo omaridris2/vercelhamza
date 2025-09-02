@@ -8,7 +8,7 @@ type AddProductFormProps = {
   onSuccess?: () => void;
 };
 
-const AddProductForm = ({ onClose, onSuccess }: AddProductFormProps) => {
+const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
   const [name, setName] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -284,4 +284,4 @@ const AddProductForm = ({ onClose, onSuccess }: AddProductFormProps) => {
   );
 };
 
-export default AddProductForm;
+export default AddPrintForm;

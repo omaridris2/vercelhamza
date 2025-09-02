@@ -8,7 +8,7 @@ import DroppableTick from '../components/DroppableTick';
 import NewJobForm from '../components/NewJobForm';
 import NewCodeForm from '../components/NewCodeForm';
 import NewUserForm from '../components/NewUserForm';
-import NewJobForms from '../components/NewPrintForm';
+import AddPrintForm from '../components/NewPrintForm';
 
 type DiscountCode = {
   id: string;
@@ -24,6 +24,14 @@ type User = {
   name: string;
   email: string;
   title: string;
+  createdAt: Date;
+};
+
+// Add this with your other state declarations
+type PrintType = {
+  id: string;
+  name: string;
+  description: string;
   createdAt: Date;
 };
 
@@ -59,6 +67,12 @@ const AdminTimelinePage = () => {
 
   // Add users state
   const [users, setUsers] = useState<User[]>([]);
+
+  // New state for assigned users
+  const [assignedUsers, setAssignedUsers] = useState<{[key: string]: string | null}>({});
+
+  // Add state for print types
+  const [printTypes, setPrintTypes] = useState<PrintType[]>([]);
 
   // Add a new job cube
   const handleAddJob = () => {
@@ -118,6 +132,39 @@ const AdminTimelinePage = () => {
       createdAt: new Date()
     };
     setUsers(prev => [...prev, userWithDate]);
+  };
+
+  // Handle user assignment to cube
+  const handleAssignUser = (cubeId: string, userId: string | null) => {
+    setAssignedUsers(prev => ({
+      ...prev,
+      [cubeId]: userId
+    }));
+  };
+
+  // Add this with your other handler functions
+  const handleJobSubmit = (jobData: { 
+    id: string;
+    title: string; 
+    size: string;
+    type: string;
+  }) => {
+    const newCube = {
+      ...jobData,
+      tickId: null,
+      completed: false
+    };
+    setCubes(prev => [...prev, newCube]);
+    setShowMenu(false);
+  };
+
+  // Add this with your other handler functions
+  const handlePrintTypeSubmit = (data: Omit<PrintType, 'createdAt'>) => {
+    const newPrintType = {
+      ...data,
+      createdAt: new Date()
+    };
+    setPrintTypes(prev => [...prev, newPrintType]);
   };
 
   // Format expiration time
@@ -221,7 +268,7 @@ const AdminTimelinePage = () => {
                           style={{ bottom: `${20 + (index * 80)}px` }}
                         >
                           <DraggableCube key={cube.id} id={cube.id} title={cube.title} type={cube.type} completed={cube.completed}
-                           onDelete={deleteCube} onComplete={handleComplete} />
+                           onDelete={deleteCube} onComplete={handleComplete} users={users} onAssignUser={handleAssignUser} assignedUser={users.find(u => u.id === assignedUsers[cube.id]) || null} />
                         </div>
                       ))}
                     </DroppableTick>
@@ -243,7 +290,7 @@ const AdminTimelinePage = () => {
               <div className="flex gap-4 mt-8">
                 {cubes.filter(c => c.tickId === null).map(cube => (
                   <DraggableCube key={cube.id} id={cube.id} title={cube.title} type={cube.type} completed={cube.completed}
-                           onDelete={deleteCube} onComplete={handleComplete} />
+                           onDelete={deleteCube} onComplete={handleComplete} users={users} onAssignUser={handleAssignUser} assignedUser={users.find(u => u.id === assignedUsers[cube.id]) || null} />
                 ))}
               </div>
             </DndContext>
@@ -264,12 +311,9 @@ const AdminTimelinePage = () => {
             <div className="text-lg text-gray-600">Printing types management coming soon...</div>
             
             {showPrintMenu && (
-              <NewJobForms
+              <AddPrintForm
                 onClose={() => setShowPrintMenu(false)}
-                onSubmit={(data) => {
-                  // Handle the form submission here
-                  setShowPrintMenu(false);
-                }}
+                
               />
             )}
           </div>
@@ -431,7 +475,7 @@ const AdminTimelinePage = () => {
       {showMenu && (
         <NewJobForm
           onClose={() => setShowMenu(false)}
-          onSubmit={(newJob) => setCubes([...cubes, newJob])}
+          onSubmit={handleJobSubmit}
         />
       )}
       

@@ -15,7 +15,7 @@ type DraggableCubeProps = {
   title: string;
   type: string;
   completed: boolean;
-  assignedUser?: User | null;
+  assignedUser?: User | null;  // Make sure this is optional
   users: User[];
   onDelete: (id: string) => void;
   onComplete: (id: string) => void;
