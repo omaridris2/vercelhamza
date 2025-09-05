@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { DndContext, closestCorners, DragEndEvent } from '@dnd-kit/core';
+import { supabase } from '@/lib/supabaseClient'
 
 import DraggableCube from '../components/DraggableCube';
 import DroppableTick from '../components/DroppableTick';
@@ -9,6 +10,10 @@ import NewJobForm from '../components/NewJobForm';
 import NewCodeForm from '../components/NewCodeForm';
 import NewUserForm from '../components/NewUserForm';
 import AddPrintForm from '../components/NewPrintForm';
+
+import { Timeline } from '../components/TimeLIne';
+
+import UserTable from '../components/UsersMenu';
 
 type DiscountCode = {
   id: string;
@@ -188,7 +193,7 @@ const AdminTimelinePage = () => {
         <div className='flex gap-6 mb-8'>
           <div
            onClick={() => setActiveSection('dashboard')}
-           className={`bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl shadow-lg p-6 
+           className={`bg-[#636255] text-white rounded-xl shadow-lg p-6 
            flex justify-center items-center w-1/5 h-16 text-lg font-semibold hover:from-gray-600 hover:to-gray-700 
            transition-all duration-200 cursor-pointer ${
              activeSection === 'dashboard' ? 'ring-4 ring-yellow-300' : ''
@@ -198,7 +203,7 @@ const AdminTimelinePage = () => {
 
           <div
            onClick={() => setActiveSection('printing-types')}
-           className={`bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl shadow-lg p-6 
+           className={`bg-[#636255] text-white rounded-xl shadow-lg p-6 
            flex justify-center items-center w-1/5 h-16 text-lg font-semibold hover:from-gray-600 hover:to-gray-700 
            transition-all duration-200 cursor-pointer ${
              activeSection === 'printing-types' ? 'ring-4 ring-yellow-300' : ''
@@ -208,7 +213,7 @@ const AdminTimelinePage = () => {
 
           <div
            onClick={() => setActiveSection('discount-codes')}
-           className={`bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl shadow-lg p-6 
+           className={`bg-[#636255] text-white rounded-xl shadow-lg p-6 
            flex justify-center items-center w-1/5 h-16 text-lg font-semibold hover:from-gray-600 hover:to-gray-700 
            transition-all duration-200 cursor-pointer ${
              activeSection === 'discount-codes' ? 'ring-4 ring-yellow-300' : ''
@@ -218,7 +223,7 @@ const AdminTimelinePage = () => {
 
           <div
            onClick={() => setActiveSection('user-accounts')}
-           className={`bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl shadow-lg p-6 
+           className={`bg-[#636255] text-white rounded-xl shadow-lg p-6 
            flex justify-center items-center w-1/5 h-16 text-lg font-semibold hover:from-gray-600 hover:to-gray-700 
            transition-all duration-200 cursor-pointer ${
              activeSection === 'user-accounts' ? 'ring-4 ring-yellow-300' : ''
@@ -228,7 +233,7 @@ const AdminTimelinePage = () => {
 
           <div
            onClick={() => setActiveSection('settings')}
-           className={`bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl shadow-lg p-6 
+           className={`bg-[#636255] text-white rounded-xl shadow-lg p-6 
            flex justify-center items-center w-1/5 h-16 text-lg font-semibold hover:from-gray-600 hover:to-gray-700 
            transition-all duration-200 cursor-pointer ${
              activeSection === 'settings' ? 'ring-4 ring-yellow-300' : ''
@@ -240,60 +245,11 @@ const AdminTimelinePage = () => {
         {/* DASHBOARD SECTION */}
         {activeSection === 'dashboard' && (
           <div className="bg-white rounded-2xl shadow-xl p-12 border border-yellow-200">
-            <div className='flex gap-199 mb-4'>
-              <h2 className="text-2xl font-bold text-gray-900 ">Work Timeline</h2>
-              <button onClick={handleAddJob} className="bg-[#636255] text-white px-20 py-2 rounded-lg hover:bg-yellow-500">Add Job</button>
-            </div>
             
-            <div className='flex gap-20 mb-20'>
-              <div className="text-2xl mb-20">Total Tasks: {cubes.length}</div>
-              <div className="text-2xl mb-20">Tasks Completed: {cubes.filter(c => c.completed).length}</div>
-              <div className="text-2xl mb-20">Missed Tasks</div>
-              <div className="text-2xl mb-20">In Progress:</div>
-            </div>
 
-            <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCorners}>
-              {/* Ticks (droppable) */}
-              <div className="flex justify-between items-end h-32 w-full">
-                {TICKS.map((_, i) => {
-                  const tickId = `tick-${i}`;
-                  const cubesInTick = cubes.filter(c => c.tickId === tickId);
-
-                  return (
-                    <DroppableTick key={tickId} id={tickId}>
-                      {cubesInTick.map((cube, index) => (
-                        <div 
-                          key={cube.id} 
-                          className="absolute"
-                          style={{ bottom: `${20 + (index * 80)}px` }}
-                        >
-                          <DraggableCube key={cube.id} id={cube.id} title={cube.title} type={cube.type} completed={cube.completed}
-                           onDelete={deleteCube} onComplete={handleComplete} users={users} onAssignUser={handleAssignUser} assignedUser={users.find(u => u.id === assignedUsers[cube.id]) || null} />
-                        </div>
-                      ))}
-                    </DroppableTick>
-                  );
-                })}
-              </div>
-                        
-              {/* Horizontal Line */}
-              <div className="h-1 w-full bg-black" />
-
-              {/* Time Labels */}
-              <div className="flex justify-between mt-2 w-full">
-                {TICKS.map((_, i) => (
-                  <div key={i} className="text-xs text-center w-4 font-bold">{i + 1}:00</div>
-                ))}
-              </div>
-
-              {/* Unplaced Cubes */}
-              <div className="flex gap-4 mt-8">
-                {cubes.filter(c => c.tickId === null).map(cube => (
-                  <DraggableCube key={cube.id} id={cube.id} title={cube.title} type={cube.type} completed={cube.completed}
-                           onDelete={deleteCube} onComplete={handleComplete} users={users} onAssignUser={handleAssignUser} assignedUser={users.find(u => u.id === assignedUsers[cube.id]) || null} />
-                ))}
-              </div>
-            </DndContext>
+           <div>
+            <Timeline />
+          </div>
           </div>
         )}
 
@@ -402,65 +358,8 @@ const AdminTimelinePage = () => {
               <h2 className="text-2xl font-bold text-gray-900">User Accounts</h2>
               <button onClick={handleAddUser} className="bg-[#636255] text-white px-20 py-2 rounded-lg hover:bg-yellow-500">Add User</button>
             </div>
+            <UserTable/>
 
-            {/* Statistics */}
-            <div className="flex gap-8 mb-8">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-2xl font-bold text-gray-900">{users.length}</div>
-                <div className="text-sm text-gray-600">Total Users</div>
-              </div>
-              
-            </div>
-
-            {/* Users Table */}
-            {users.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse border border-gray-300">
-                  <thead>
-                    <tr className="bg-gray-50">
-                      <th className="border border-gray-300 px-4 py-3 text-left font-semibold">Name</th>
-                      <th className="border border-gray-300 px-4 py-3 text-left font-semibold">Email</th>
-                      <th className="border border-gray-300 px-4 py-3 text-left font-semibold">Role</th>
-                      <th className="border border-gray-300 px-4 py-3 text-left font-semibold">Created</th>
-                      <th className="border border-gray-300 px-4 py-3 text-left font-semibold">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users.map((user) => (
-                      <tr key={user.id} className="hover:bg-gray-50">
-                        <td className="border border-gray-300 px-4 py-3 font-semibold">{user.name}</td>
-                        <td className="border border-gray-300 px-4 py-3 text-blue-600">{user.email}</td>
-                        <td className="border border-gray-300 px-4 py-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            user.title === 'Admin' 
-                              ? 'bg-red-100 text-red-800' 
-                              : user.title === 'Manager'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-blue-100 text-blue-800'
-                          }`}>
-                            {user.title}
-                          </span>
-                        </td>
-                        <td className="border border-gray-300 px-4 py-3 text-sm text-gray-600">{formatCreatedDate(user.createdAt)}</td>
-                        <td className="border border-gray-300 px-4 py-3">
-                          <button 
-                            onClick={() => deleteUser(user.id)}
-                            className="text-red-600 hover:text-red-800 text-sm font-medium"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-center py-12 text-gray-500">
-                <div className="text-lg">No users created yet</div>
-                <div className="text-sm mt-2">Click &quot;Add User&quot; to create your first user account</div>
-              </div>
-            )}
           </div>
         )}
 

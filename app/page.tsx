@@ -1,17 +1,11 @@
-import { supabase } from '@/lib/supabaseClient'
+"use client"
+import { Timeline } from './components/TimeLIne';
 
-export default async function HomePage() {
-  const { data, error } = await supabase
-    .from('products')
-    .select('*')
-
-  console.log("✅ Supabase data:", data)
-  console.log("⚠️ Supabase error:", error)
-
+export default function AdminPage() {
   return (
-    <main>
-      <h1>Profiles</h1>
-      <pre>{JSON.stringify(data, null, 2)}</pre>
-    </main>
+    <div>
+      <h1>Admin Timeline</h1>
+      <Timeline />
+    </div>
   )
 }

@@ -10,17 +10,18 @@ type User = {
   title: string;
 };
 
-type DraggableCubeProps = {
+interface DraggableCubeProps {
   id: string;
   title: string;
   type: string;
   completed: boolean;
-  assignedUser?: User | null;  // Make sure this is optional
-  users: User[];
   onDelete: (id: string) => void;
   onComplete: (id: string) => void;
+  users: User[];
   onAssignUser: (cubeId: string, userId: string | null) => void;
-};
+  assignedUser: User | null;
+  isDragging?: boolean; // Add this line
+}
 
 const DraggableCube = ({ 
   id, 
@@ -31,7 +32,8 @@ const DraggableCube = ({
   users, 
   onDelete, 
   onComplete, 
-  onAssignUser 
+  onAssignUser,
+  isDragging // Add this to props being destructured
 }: DraggableCubeProps) => {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({ 
     id,
@@ -111,16 +113,19 @@ const DraggableCube = ({
         {...(completed ? {} : listeners)}
         {...(completed ? {} : attributes)}
         onContextMenu={handleContextMenu}
-        className={`w-20 h-20 rounded-2xl shadow-lg flex flex-col justify-center items-center text-white font-bold border
-            bg-gradient-to-br ${getColorClass(type)} ${completed ? 'cursor-default' : 'cursor-pointer'} relative`}
+        className={`w-30 h-30   rounded-2xl shadow-lg flex flex-col justify-center items-center text-white font-bold border-2  bg-[#636255]
+            border-gradient-to-br ${getColorClass(type)} ${completed ?  'cursor-default' : 'cursor-pointer'} relative
+            ${isDragging ? 'opacity-100' : 'opacity-100'}`} // Changed to keep original visible
         style={{
           transform: transform && !completed
             ? `translate(${transform.x}px, ${transform.y}px)`
             : undefined,
           userSelect: 'none',
+          visibility: isDragging ? 'visible' : 'visible', // Added to ensure visibility
         }}
       >
         <div className="text-xs text-center px-1">{title}</div>
+        
         
         {/* Assigned User Indicator */}
         {assignedUser && (
@@ -156,7 +161,7 @@ const DraggableCube = ({
               setMenuPosition(null);
             }}
           >
-            📋 View Details
+             View Details
           </div>
 
           {/* Assignment Section */}
@@ -164,7 +169,7 @@ const DraggableCube = ({
             className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
             onClick={() => setShowAssignMenu(!showAssignMenu)}
           >
-            👤 Assign to User {showAssignMenu ? '▲' : '▼'}
+             Assign to User {showAssignMenu ? '▲' : '▼'}
           </div>
 
           {showAssignMenu && (
@@ -189,7 +194,7 @@ const DraggableCube = ({
                   className="px-6 py-2 hover:bg-gray-200 cursor-pointer text-sm text-red-600"
                   onClick={() => handleAssignUser(null)}
                 >
-                  ❌ Unassign
+                   Unassign
                 </div>
               )}
 
@@ -230,7 +235,7 @@ const DraggableCube = ({
                 setMenuPosition(null);
               }}
             >
-              ✅ Mark as Complete
+              Mark as Complete
             </div>
           )}
           
@@ -241,7 +246,7 @@ const DraggableCube = ({
               setMenuPosition(null);
             }}
           >
-            🗑️ Delete
+            Delete
           </div>
         </div>
       )}
