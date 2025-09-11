@@ -181,10 +181,10 @@ export const Timeline = () => {
             </div>
                     
             {/* Horizontal Line */}
-            <div className="h-1 w-full bg-black  min-w-[2400px]" />
+            <div className="border-t-4 border-dashed border-gray-300 w-full min-w-[2800px]" />
 
             {/* Time Labels */}
-            <div className="flex justify-between mt-2 w-full min-w-[1200px]">
+            <div className="flex justify-between mt-2 w-full min-w-[1100px]">
               {TICKS.map((_, i) => (
                 <div key={i} className="text-xs text-center w-4 font-bold">{i + 1}:00</div>
               ))}

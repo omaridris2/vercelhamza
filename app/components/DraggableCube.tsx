@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 
+import { supabase } from '@/lib/supabaseClient'
+
 type User = {
   id: string;
   name: string;

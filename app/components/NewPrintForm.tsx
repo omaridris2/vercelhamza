@@ -3,6 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
+type Menu = {
+  name: string;
+  options: { option: string; price: number }[];
+};
+
 type AddProductFormProps = {
   onClose: () => void;
   onSuccess?: () => void;
@@ -11,6 +16,7 @@ type AddProductFormProps = {
 const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
   const [name, setName] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [menus, setMenus] = useState<Menu[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -43,7 +49,7 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
   // Handle image selection and preview
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    
+
     // Clean up previous preview
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
@@ -60,7 +66,7 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
 
       setImageFile(file);
       setError(null);
-      
+
       // Create preview URL
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
@@ -75,15 +81,58 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
     return `product_${timestamp}_${randomStr}.${fileExt}`;
   };
 
+  // Add a new dropdown menu
+  const addMenu = () => {
+    setMenus([...menus, { name: '', options: [{ option: '', price: 0 }] }]);
+  };
+
+  // Remove a menu
+  const removeMenu = (menuIndex: number) => {
+    const updated = menus.filter((_, index) => index !== menuIndex);
+    setMenus(updated);
+  };
+
+  // Add option to a specific menu
+  const addOption = (menuIndex: number) => {
+    const updated = [...menus];
+    updated[menuIndex].options.push({ option: '', price: 0 });
+    setMenus(updated);
+  };
+
+  // Remove option from a specific menu
+  const removeOption = (menuIndex: number, optionIndex: number) => {
+    const updated = [...menus];
+    updated[menuIndex].options = updated[menuIndex].options.filter((_, index) => index !== optionIndex);
+    setMenus(updated);
+  };
+
+  // Update menu name
+  const updateMenu = (menuIndex: number, value: string) => {
+    const updated = [...menus];
+    updated[menuIndex].name = value;
+    setMenus(updated);
+  };
+
+  // Update option
+  const updateOption = (menuIndex: number, optionIndex: number, field: 'option' | 'price', value: string) => {
+    const updated = [...menus];
+    if (field === 'price') {
+      updated[menuIndex].options[optionIndex].price = parseFloat(value) || 0;
+    } else {
+      updated[menuIndex].options[optionIndex].option = value;
+    }
+    setMenus(updated);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validation
     if (!name.trim()) {
       setError('Product name is required');
       return;
     }
-    
+
     if (!imageFile) {
       setError('Product image is required');
       return;
@@ -95,7 +144,6 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
     try {
       // 1. Upload image to Supabase storage
       const fileName = generateFileName(imageFile);
-      
       const { error: uploadError, data: uploadData } = await supabase.storage
         .from('product-images')
         .upload(fileName, imageFile, {
@@ -121,22 +169,59 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
       }
 
       // 3. Insert product into database
-      const { error: insertError } = await supabase
+      const { data: product, error: productError } = await supabase
         .from('products')
-        .insert([{
-          name: name.trim(),
-          image_url: publicUrl
+        .insert([{ 
+          name: name.trim(), 
+          image_url: publicUrl 
         }])
         .select('*')
         .single();
 
-      if (insertError) {
+      if (productError) {
         // If database insert fails, try to clean up the uploaded file
         await supabase.storage
           .from('product-images')
           .remove([uploadData.path]);
+        throw new Error(`Failed to save product: ${productError.message}`);
+      }
+
+      // 4. Insert menus + options
+      for (const menu of menus) {
+        if (!menu.name.trim()) continue; // Skip empty menu names
+
+        const { data: menuData, error: menuError } = await supabase
+          .from('product_menus')
+          .insert([{ 
+            product_id: product.id, 
+            name: menu.name.trim() 
+          }])
+          .select()
+          .single();
+
+        if (menuError) {
+          console.error('Menu insert error:', menuError);
+          continue;
+        }
+
+        // Filter out empty options
+        const validOptions = menu.options.filter(opt => opt.option.trim());
         
-        throw new Error(`Failed to save product: ${insertError.message}`);
+        if (validOptions.length > 0) {
+          const optionsToInsert = validOptions.map(opt => ({
+            menu_id: menuData.id,
+            option_name: opt.option.trim(),
+            price: opt.price
+          }));
+
+          const { error: optionsError } = await supabase
+            .from('product_menu_options')
+            .insert(optionsToInsert);
+
+          if (optionsError) {
+            console.error('Options insert error:', optionsError);
+          }
+        }
       }
 
       // Success - reset form and close
@@ -159,8 +244,8 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
   const resetForm = () => {
     setName('');
     setImageFile(null);
+    setMenus([]);
     setError(null);
-    
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
@@ -173,11 +258,9 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
   };
 
   return (
-    <div 
-      className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 p-4"
-      onClick={(e) => e.target === e.currentTarget && handleCancel()}
-    >
-      <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-200 max-w-md w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 p-4"
+         onClick={(e) => e.target === e.currentTarget && handleCancel()}>
+      <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-200 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Add New Product</h2>
           <button
@@ -192,10 +275,7 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Product Name Input */}
           <div>
-            <label 
-              htmlFor="productName"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
+            <label htmlFor="productName" className="block text-sm font-medium text-gray-700 mb-1">
               Product Name *
             </label>
             <input
@@ -213,10 +293,7 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
 
           {/* Image Upload */}
           <div>
-            <label 
-              htmlFor="productImage"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
+            <label htmlFor="productImage" className="block text-sm font-medium text-gray-700 mb-1">
               Product Image *
             </label>
             <input
@@ -234,13 +311,91 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
             {/* Image Preview */}
             {previewUrl && (
               <div className="mt-3">
-                <img 
-                  src={previewUrl} 
-                  alt="Product preview" 
+                <img
+                  src={previewUrl}
+                  alt="Product preview"
                   className="w-32 h-32 object-cover rounded-lg border border-gray-200 shadow-sm"
                 />
               </div>
             )}
+          </div>
+
+          {/* Dropdown Menus */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-medium text-gray-700">Dropdown Menus (Optional)</h3>
+              <button
+                type="button"
+                onClick={addMenu}
+                className="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm transition-colors"
+                disabled={loading}
+              >
+                + Add Menu
+              </button>
+            </div>
+            
+            {menus.map((menu, menuIndex) => (
+              <div key={menuIndex} className="border border-gray-200 p-4 rounded-lg mt-3 bg-gray-50">
+                <div className="flex items-center gap-2 mb-3">
+                  <input
+                    type="text"
+                    placeholder="Menu name (e.g., Size, Color)"
+                    value={menu.name}
+                    onChange={(e) => updateMenu(menuIndex, e.target.value)}
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent disabled:bg-gray-50"
+                    disabled={loading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeMenu(menuIndex)}
+                    className="text-red-500 hover:text-red-700 px-2 py-1"
+                    disabled={loading}
+                  >
+                    Remove
+                  </button>
+                </div>
+                
+                {menu.options.map((opt, optionIndex) => (
+                  <div key={optionIndex} className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      placeholder="Option name (e.g., Small, Red)"
+                      value={opt.option}
+                      onChange={(e) => updateOption(menuIndex, optionIndex, 'option', e.target.value)}
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent disabled:bg-gray-50"
+                      disabled={loading}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Price"
+                      step="0.01"
+                      min="0"
+                      value={opt.price}
+                      onChange={(e) => updateOption(menuIndex, optionIndex, 'price', e.target.value)}
+                      className="w-24 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent disabled:bg-gray-50"
+                      disabled={loading}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeOption(menuIndex, optionIndex)}
+                      className="text-red-500 hover:text-red-700 px-2 py-1"
+                      disabled={loading}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                
+                <button
+                  type="button"
+                  onClick={() => addOption(menuIndex)}
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                  disabled={loading}
+                >
+                  + Add Option
+                </button>
+              </div>
+            ))}
           </div>
 
           {/* Error Message */}
@@ -271,10 +426,10 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Uploading...
+                  Saving...
                 </span>
               ) : (
-                'Add Product'
+                'Save Product'
               )}
             </button>
           </div>

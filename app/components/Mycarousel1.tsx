@@ -25,7 +25,7 @@ const MyCarousel1 = () => {
   useEffect(() => {
     const fetchProducts = async () => {
       const { data, error } = await supabase
-        .from("products") // your table name
+        .from("products")
         .select("id, name, image_url");
 
       if (error) {
@@ -45,23 +45,33 @@ const MyCarousel1 = () => {
     <div className="flex justify-center mt-8">
       <Carousel className="w-full max-w-7xl relative">
         <CarouselContent>
-          {products.map((product) => (
-            <CarouselItem
-              key={product.id}
-              className="basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/3"
-            >
-              
-                <nav className="flex flex-col items-center p-4 cursor-pointer">
-    <img
-      src={product.image_url}
-      alt={product.name}
-      className="w-32 h-32 object-cover rounded"
-    />
-    <span className="mt-2 text-center">{product.name}</span>
-  </nav>
-              
-            </CarouselItem>
-          ))}
+          {products
+  .filter(p => p.id != null && !isNaN(Number(p.id)))
+  .map((product) => (
+    <CarouselItem
+      key={product.id}
+      className="basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/4"
+    >
+      <Link
+        href={`/product/${product.id}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex flex-col items-center p-4 cursor-pointer hover:scale-105 transition-transform"
+      >
+        
+        <img
+          src={product.image_url}
+          alt={product.name}
+          className="w-60 h-60 object-cover "
+        />
+        <div className="w-60 h-30 bg-[#636255] shadow-md p-2 flex justify-start items-center">
+       <span className="text-white">{product.name}</span>
+       <span className="text-white">{product.name}</span>
+       </div>
+      </Link>
+    </CarouselItem>
+))}
+
         </CarouselContent>
 
         <CarouselPrevious className="-left-4 text-black" />
