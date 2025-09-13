@@ -1,7 +1,6 @@
 'use client'
 
-import { supabase } from '@/lib/supabaseClient'
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 
 type Profile = {
   id: string
@@ -11,27 +10,12 @@ type Profile = {
   created_at: string
 }
 
-const UserTable = () => {
-  const [users, setUsers] = useState<Profile[]>([])
-  const [loading, setLoading] = useState(true)
+interface UserTableProps {
+  users: Profile[]
+  loading: boolean
+}
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, name, email, role, created_at')
-
-      if (error) {
-        console.error('⚠️ Error fetching users:', error)
-      } else {
-        setUsers(data || [])
-      }
-      setLoading(false)
-    }
-
-    fetchUsers()
-  }, [])
-
+const UserTable: React.FC<UserTableProps> = ({ users, loading }) => {
   if (loading) {
     return <div>Loading users...</div>
   }

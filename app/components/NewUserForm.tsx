@@ -4,32 +4,62 @@ import React, { useState } from 'react';
 
 type NewUserFormProps = {
   onClose: () => void;
-  onSubmit: (user: { id: string; name: string; email: string; title: string }) => void;
+  onSubmit: (user: { id: string; name: string; email: string; role: string }) => void;
 };
 
 const NewUserForm = ({ onClose, onSubmit }: NewUserFormProps) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [title, setTitle] = useState('Designer');
+  const [role, setRole] = useState('Designer');
+  
 
-  const handleSubmit = () => {
-    // Basic validation
-    if (!name.trim() || !email.trim()) {
-      alert('Please fill in all required fields');
+  const handleSubmit = async () => {
+  // Basic validation
+  if (!name.trim() || !email.trim()) {
+    alert('Please fill in all required fields');
+    return;
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    alert('Please enter a valid email address');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/create-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        password: 'TempPassword123!', // you can randomize this or let admin choose
+        name,
+        role,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(`Error: ${data.error}`);
       return;
     }
 
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      alert('Please enter a valid email address');
-      return;
-    }
+    // Call parent onSubmit with the new user info
+    onSubmit({
+      id: data.user.id,
+      name,
+      email,
+      role,
+    });
 
-    const id = `user-${Math.random().toString(36).substr(2, 9)}`;
-    onSubmit({ id, name, email, title });
     onClose();
-  };
+  } catch (err) {
+    console.error(err);
+    alert('Something went wrong creating the user');
+  }
+};
+
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
@@ -71,8 +101,8 @@ const NewUserForm = ({ onClose, onSubmit }: NewUserFormProps) => {
               Role
             </label>
             <select
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
             >
               <option value="Designer">Designer</option>

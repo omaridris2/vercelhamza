@@ -1,11 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DndContext, closestCorners, DragEndEvent } from '@dnd-kit/core';
 import { supabase } from '@/lib/supabaseClient'
 
-import DraggableCube from '../components/DraggableCube';
-import DroppableTick from '../components/DroppableTick';
 import NewJobForm from '../components/NewJobForm';
 import NewCodeForm from '../components/NewCodeForm';
 import NewUserForm from '../components/NewUserForm';
@@ -28,8 +26,17 @@ type User = {
   id: string;
   name: string;
   email: string;
-  title: string;
+  role: string;
   createdAt: Date;
+};
+
+// Add this type to match your UserTable component
+type Profile = {
+  id: string;
+  name: string | null;
+  email: string;
+  role: string | null;
+  created_at: string;
 };
 
 // Add this with your other state declarations
@@ -43,6 +50,11 @@ type PrintType = {
 const AdminTimelinePage = () => {
   const TICKS = Array.from({ length: 24 });
   const [activeSection, setActiveSection] = useState<'dashboard' | 'printing-types' | 'discount-codes' | 'user-accounts' | 'settings'>('dashboard');
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  // Add loading state for profiles
+  const [profilesLoading, setProfilesLoading] = useState(true);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
 
   const handleComplete = (id: string) => {
     setCubes(prev =>
@@ -78,6 +90,38 @@ const AdminTimelinePage = () => {
 
   // Add state for print types
   const [printTypes, setPrintTypes] = useState<PrintType[]>([]);
+
+  // Fetch profiles data on component mount
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      setProfilesLoading(true);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, name, email, role, created_at');
+      
+      if (error) {
+        console.error('⚠️ Error fetching users:', error);
+      } else {
+        setProfiles(data || []);
+      }
+      setProfilesLoading(false);
+    };
+
+    fetchProfiles();
+  }, []);
+
+  // Function to refresh profiles (call this when you add a new user)
+  const refreshProfiles = async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, name, email, role, created_at');
+    
+    if (error) {
+      console.error('⚠️ Error fetching users:', error);
+    } else {
+      setProfiles(data || []);
+    }
+  };
 
   // Add a new job cube
   const handleAddJob = () => {
@@ -130,13 +174,16 @@ const AdminTimelinePage = () => {
     setDiscountCodes(prev => [...prev, codeWithDate]);
   };
 
-  // Handle new user submission
-  const handleUserSubmit = (newUser: { id: string; name: string; email: string; title: string }) => {
+  // Handle new user submission - now also refresh profiles
+  const handleUserSubmit = async (newUser: { id: string; name: string; email: string; role: string }) => {
     const userWithDate: User = {
       ...newUser,
       createdAt: new Date()
     };
     setUsers(prev => [...prev, userWithDate]);
+    
+    // Refresh profiles data after adding new user
+    await refreshProfiles();
   };
 
   // Handle user assignment to cube
@@ -182,71 +229,134 @@ const AdminTimelinePage = () => {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
   };
 
+  const getSectionTitle = () => {
+    switch (activeSection) {
+      case 'dashboard': return 'Dashboard';
+      case 'printing-types': return 'Printing Types';
+      case 'discount-codes': return 'Discount Codes';
+      case 'user-accounts': return 'User Accounts';
+      case 'settings': return 'Settings';
+      default: return 'Dashboard';
+    }
+  };
+
+  const handleSectionChange = (section: typeof activeSection) => {
+    setActiveSection(section);
+    setIsDrawerOpen(false);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#f8f8f9] to-[#f8f8f9] p-6">
+    <div className="min-h-screen bg-gradient-to-br from-[#f8f8f9] to-[#f8f8f9] p-6 relative">
       <div className="max-w-screen-xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 border border-yellow-200 flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Job Timeline Admin</h1>
+        <div className="    mb-8   flex justify-between items-center">
+          {/* Three dots*/}
+          <button
+            onClick={() => setIsDrawerOpen(true)}
+            className="flex flex-row gap-1 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+            <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+            <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+          </button>
+          
+          <div className="w-8"></div> {/* Spacer for centering */}
         </div>
         
-        <div className='flex gap-6 mb-8'>
-          <div
-           onClick={() => setActiveSection('dashboard')}
-           className={`bg-[#636255] text-white rounded-xl shadow-lg p-6 
-           flex justify-center items-center w-1/5 h-16 text-lg font-semibold hover:from-gray-600 hover:to-gray-700 
-           transition-all duration-200 cursor-pointer ${
-             activeSection === 'dashboard' ? 'ring-4 ring-yellow-300' : ''
-           }`}>
-           Dashboard
-          </div>
+        {/* Left Drawer */}
+        <div className={`fixed left-0 top-0 h-full w-80 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${
+  isDrawerOpen ? 'translate-x-0' : '-translate-x-full'
+}`}>
+  <div className="p-6">
+    <div className="flex justify-between items-center mb-8">
+      <h2 className="text-xl font-bold text-gray-900">Navigation</h2>
+      <button
+        onClick={() => setIsDrawerOpen(false)}
+        className="text-gray-500 hover:text-gray-700 transition-colors duration-200"
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    
+    <div className="space-y-3">
+      <button
+        onClick={() => handleSectionChange('dashboard')}
+        className={`w-full text-left p-4 rounded-lg transition-all duration-200 ${
+          activeSection === 'dashboard' 
+            ? 'bg-[#636255] text-white shadow-lg' 
+            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+        }`}
+      >
+        <div className="font-semibold">Dashboard</div>
+        <div className="text-sm opacity-80">Overview and timeline</div>
+      </button>
 
-          <div
-           onClick={() => setActiveSection('printing-types')}
-           className={`bg-[#636255] text-white rounded-xl shadow-lg p-6 
-           flex justify-center items-center w-1/5 h-16 text-lg font-semibold hover:from-gray-600 hover:to-gray-700 
-           transition-all duration-200 cursor-pointer ${
-             activeSection === 'printing-types' ? 'ring-4 ring-yellow-300' : ''
-           }`}>
-           Printing Types
-          </div>
+      <button
+        onClick={() => handleSectionChange('printing-types')}
+        className={`w-full text-left p-4 rounded-lg transition-all duration-200 ${
+          activeSection === 'printing-types' 
+            ? 'bg-[#636255] text-white shadow-lg' 
+            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+        }`}
+      >
+        <div className="font-semibold">Printing Types</div>
+        <div className="text-sm opacity-80">Manage print categories</div>
+      </button>
 
-          <div
-           onClick={() => setActiveSection('discount-codes')}
-           className={`bg-[#636255] text-white rounded-xl shadow-lg p-6 
-           flex justify-center items-center w-1/5 h-16 text-lg font-semibold hover:from-gray-600 hover:to-gray-700 
-           transition-all duration-200 cursor-pointer ${
-             activeSection === 'discount-codes' ? 'ring-4 ring-yellow-300' : ''
-           }`}>
-           Discount Codes
-          </div>
+      <button
+        onClick={() => handleSectionChange('discount-codes')}
+        className={`w-full text-left p-4 rounded-lg transition-all duration-200 ${
+          activeSection === 'discount-codes' 
+            ? 'bg-[#636255] text-white shadow-lg' 
+            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+        }`}
+      >
+        <div className="font-semibold">Discount Codes</div>
+        <div className="text-sm opacity-80">Generate and manage codes</div>
+      </button>
 
-          <div
-           onClick={() => setActiveSection('user-accounts')}
-           className={`bg-[#636255] text-white rounded-xl shadow-lg p-6 
-           flex justify-center items-center w-1/5 h-16 text-lg font-semibold hover:from-gray-600 hover:to-gray-700 
-           transition-all duration-200 cursor-pointer ${
-             activeSection === 'user-accounts' ? 'ring-4 ring-yellow-300' : ''
-           }`}>
-           User Accounts
-          </div>
+      <button
+        onClick={() => handleSectionChange('user-accounts')}
+        className={`w-full text-left p-4 rounded-lg transition-all duration-200 ${
+          activeSection === 'user-accounts' 
+            ? 'bg-[#636255] text-white shadow-lg' 
+            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+        }`}
+      >
+        <div className="font-semibold">User Accounts</div>
+        <div className="text-sm opacity-80">Manage user profiles</div>
+      </button>
 
-          <div
-           onClick={() => setActiveSection('settings')}
-           className={`bg-[#636255] text-white rounded-xl shadow-lg p-6 
-           flex justify-center items-center w-1/5 h-16 text-lg font-semibold hover:from-gray-600 hover:to-gray-700 
-           transition-all duration-200 cursor-pointer ${
-             activeSection === 'settings' ? 'ring-4 ring-yellow-300' : ''
-           }`}>
-           Settings
-          </div>
-        </div>
+      <button
+        onClick={() => handleSectionChange('settings')}
+        className={`w-full text-left p-4 rounded-lg transition-all duration-200 ${
+          activeSection === 'settings' 
+            ? 'bg-[#636255] text-white shadow-lg' 
+            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+        }`}
+      >
+        <div className="font-semibold">Settings</div>
+        <div className="text-sm opacity-80">System configuration</div>
+      </button>
+    </div>
+  </div>
+</div>
+
+{/* Overlay - Only render when drawer is open with fade animation */}
+{isDrawerOpen && (
+  <div 
+    className={`fixed inset-0 bg-black z-40 transition-opacity duration-300 ease-in-out ${
+      isDrawerOpen ? 'opacity-50' : 'opacity-0'
+    }`}
+    onClick={() => setIsDrawerOpen(false)}
+  ></div>
+)}
 
         {/* DASHBOARD SECTION */}
         {activeSection === 'dashboard' && (
-          <div className="bg-white rounded-2xl shadow-xl p-12 border border-yellow-200">
-            
-
+          <div className="">
            <div>
             <Timeline />
           </div>
@@ -358,7 +468,7 @@ const AdminTimelinePage = () => {
               <h2 className="text-2xl font-bold text-gray-900">User Accounts</h2>
               <button onClick={handleAddUser} className="bg-[#636255] text-white px-20 py-2 rounded-lg hover:bg-yellow-500">Add User</button>
             </div>
-            <UserTable/>
+            <UserTable users={profiles} loading={profilesLoading} />
 
           </div>
         )}

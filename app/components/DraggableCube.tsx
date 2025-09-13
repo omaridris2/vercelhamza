@@ -115,7 +115,7 @@ const DraggableCube = ({
         {...(completed ? {} : listeners)}
         {...(completed ? {} : attributes)}
         onContextMenu={handleContextMenu}
-        className={`w-30 h-30   rounded-2xl shadow-lg flex flex-col justify-center items-center text-white font-bold border-2  bg-[#636255]
+        className={`w-40 h-40   rounded-2xl shadow-lg flex flex-col justify-center items-center text-white font-bold border-2  bg-[#636255]
             border-gradient-to-br ${getColorClass(type)} ${completed ?  'cursor-default' : 'cursor-pointer'} relative
             ${isDragging ? 'opacity-100' : 'opacity-100'}`} // Changed to keep original visible
         style={{

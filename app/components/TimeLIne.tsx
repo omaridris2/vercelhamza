@@ -157,7 +157,7 @@ export const Timeline = () => {
                       <div 
                         key={cube.id} 
                         className="absolute"
-                        style={{ bottom: `${20 + (index * 120)}px` }} // Changed from 80px to 40px
+                        style={{ bottom: `${20 + (index * 160)}px` }} // Changed from 80px to 40px
                       >
                         
                         <DraggableCube 
@@ -181,7 +181,7 @@ export const Timeline = () => {
             </div>
                     
             {/* Horizontal Line */}
-            <div className="border-t-4 border-dashed border-gray-300 w-full min-w-[2800px]" />
+            <div className="border-t-4 border-dashed border-gray-300 w-full min-w-[3700px]" />
 
             {/* Time Labels */}
             <div className="flex justify-between mt-2 w-full min-w-[1100px]">
