@@ -15,6 +15,7 @@ type User = {
 interface DraggableCubeProps {
   id: string;
   title: string;
+  orderno: string;
   type: string;
   completed: boolean;
   onDelete: (id: string) => void;
@@ -28,6 +29,7 @@ interface DraggableCubeProps {
 const DraggableCube = ({ 
   id, 
   title, 
+  orderno,
   type, 
   completed, 
   assignedUser, 
@@ -126,7 +128,10 @@ const DraggableCube = ({
           visibility: isDragging ? 'visible' : 'visible', // Added to ensure visibility
         }}
       >
-        <div className="text-xs text-center px-1">{title}</div>
+        <div className="text-xl text-left px-1">
+          <span>{title}</span>
+          {<br />}{orderno}
+          </div>
         
         
         {/* Assigned User Indicator */}

@@ -4,6 +4,7 @@ import DraggableCube from './DraggableCube';
 import DroppableTick from './DroppableTick';
 import NewJobForm from './NewJobForm';
 
+import Invistick from './invistick';
 type User = {
   id: string;
   name: string;
@@ -13,7 +14,8 @@ type User = {
 };
 
 export const Timeline = () => {
-    const scrollRef = useRef<HTMLDivElement>(null);
+  const [activeTab, setActiveTab] = useState<'task management' | 'user management' | 'task tracking'>('task management');
+  const scrollRef = useRef<HTMLDivElement>(null);
 
     const scroll = (direction: "left" | "right") => {
       if (scrollRef.current) {
@@ -27,11 +29,14 @@ export const Timeline = () => {
     };
 
   const TICKS = Array.from({ length: 24 });
+  const INVITICKS = Array.from({ length: 24 });
   
   const [cubes, setCubes] = useState<{
     id: string;
     tickId: string | null;
     title: string;
+    orderno: string;
+    
     size: string;
     type: string;
     completed: boolean;
@@ -85,39 +90,98 @@ export const Timeline = () => {
     setShowMenu(true);
   };
 
-  // Update handleJobSubmit function to include initial tick position
+  // Update handleJobSubmit function to place new cubes in placeholder area
   const handleJobSubmit = (jobData: { 
     id: string;
     title: string; 
+    orderno: string;
     size: string;
     type: string;
   }) => {
     const newCube = {
       ...jobData,
-      tickId: `tick-0`, // Place new cube on the first tick (1:00)
+      tickId: null, // Place new cube in placeholder area initially
       completed: false
     };
     setCubes(prev => [...prev, newCube]);
     setShowMenu(false);
   };
 
+  // NEW FUNCTION: Move cube from task queue to first available timeline slot
+  const moveCubeToTimeline = (cubeId: string) => {
+    // Find the first available tick (one with the fewest cubes)
+    const tickCounts = TICKS.map((_, i) => {
+      const tickId = `tick-${i}`;
+      const cubesInTick = cubes.filter(c => c.tickId === tickId).length;
+      return { tickId, count: cubesInTick };
+    });
+
+    // Sort by count to find the tick with the fewest cubes
+    const availableTick = tickCounts.sort((a, b) => a.count - b.count)[0];
+
+    // Move the cube to this tick
+    setCubes(prev =>
+      prev.map(cube =>
+        cube.id === cubeId
+          ? { ...cube, tickId: availableTick.tickId }
+          : cube
+      )
+    );
+  };
+
   return (
     <div>
-      <div className='flex gap-199 mb-4'>
-        <h2 className="text-2xl font-bold text-gray-900 ">Work Timeline</h2>
-        <button 
-          onClick={handleAddJob} 
-          className="bg-[#636255] text-white px-20 py-2 rounded-lg hover:bg-yellow-500"
-        >
-          Add Job
-        </button>
+      <h2 className="text-2xl font-bold text-gray-900">Work Timeline</h2>
+      
+      <div className='flex gap-199'>
+        
       </div>
+      
+      <NewJobForm
+        onSubmit={handleJobSubmit}
+      />
       
       <div className='flex gap-20 mb-5'>
         <div className="text-2xl mb-20">Total Tasks: {cubes.length}</div>
         <div className="text-2xl mb-20">Tasks Completed: {cubes.filter(c => c.completed).length}</div>
         <div className="text-2xl mb-20">Missed Tasks: {cubes.filter(c => !c.completed).length}</div>
         <div className="text-2xl mb-20">In Progress: {cubes.filter(c => !c.completed && c.tickId !== null).length}</div>
+      </div>
+
+      {/* Task Placeholder Area */}
+      <div className="mb-8">
+        <h3 className="text-lg font-semibold text-gray-700 mb-4">Task Queue - Click or Drag to Timeline</h3>
+        <div className="min-h-[120px] bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-4">
+          {cubes.filter(c => c.tickId === null).length === 0 ? (
+            <div className="flex items-center justify-center h-full text-gray-500 italic">
+              No tasks in queue. Create a new task to get started.
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-4">
+              {cubes.filter(c => c.tickId === null).map(cube => (
+                <div
+                  key={cube.id}
+                  onClick={() => moveCubeToTimeline(cube.id)}
+                  className="cursor-pointer hover:transform hover:scale-105 transition-transform"
+                  title="Click to move to timeline"
+                >
+                  <DraggableCube 
+                    id={cube.id} 
+                    title={cube.title} 
+                    orderno={cube.orderno}
+                    type={cube.type} 
+                    completed={cube.completed}
+                    onDelete={deleteCube} 
+                    onComplete={handleComplete} 
+                    users={users} 
+                    onAssignUser={handleAssignUser} 
+                    assignedUser={users.find(u => u.id === assignedUsers[cube.id]) || null} 
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCorners}>
@@ -141,7 +205,7 @@ export const Timeline = () => {
         {/* Scrollable Timeline Container */}
         <div 
           ref={scrollRef}
-          className="overflow-x-auto overflow-y-visible scrollbar-hide "
+          className="overflow-x-auto overflow-y-visible scrollbar-hide"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           <div className="min-w-max mt-70">
@@ -157,13 +221,13 @@ export const Timeline = () => {
                       <div 
                         key={cube.id} 
                         className="absolute"
-                        style={{ bottom: `${20 + (index * 160)}px` }} // Changed from 80px to 40px
+                        style={{ bottom: `${20 + (index * 160)}px` }}
                       >
-                        
                         <DraggableCube 
                           key={cube.id} 
                           id={cube.id} 
-                          title={cube.title} 
+                          title={cube.title}
+                          orderno={cube.orderno} 
                           type={cube.type} 
                           completed={cube.completed}
                           onDelete={deleteCube} 
@@ -172,7 +236,6 @@ export const Timeline = () => {
                           onAssignUser={handleAssignUser} 
                           assignedUser={users.find(u => u.id === assignedUsers[cube.id]) || null} 
                         />
-                        
                       </div>
                     ))}
                   </DroppableTick>
@@ -191,32 +254,7 @@ export const Timeline = () => {
             </div>
           </div>
         </div>
-
-        {/* Unplaced Cubes */}
-        <div className="flex gap-4 mt-8">
-          {cubes.filter(c => c.tickId === null).map(cube => (
-            <DraggableCube 
-              key={cube.id} 
-              id={cube.id} 
-              title={cube.title} 
-              type={cube.type} 
-              completed={cube.completed}
-              onDelete={deleteCube} 
-              onComplete={handleComplete} 
-              users={users} 
-              onAssignUser={handleAssignUser} 
-              assignedUser={users.find(u => u.id === assignedUsers[cube.id]) || null} 
-            />
-          ))}
-        </div>
       </DndContext>
-
-      {showMenu && (
-        <NewJobForm
-          onClose={() => setShowMenu(false)}
-          onSubmit={handleJobSubmit}
-        />
-      )}
     </div>
   )
 }

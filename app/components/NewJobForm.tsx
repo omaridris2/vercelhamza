@@ -3,96 +3,108 @@
 import React, { useState } from 'react';
 
 type NewJobFormProps = {
-  onClose: () => void;
-  onSubmit: (job: { id: string; title: string; size: string; type: string; tickId: string | null;deadline: number }) => void;
+  
+  onSubmit: (job: { id: string; orderno: string; title: string; size: string; type: string; tickId: string | null; deadline: number }) => void;
 };
 
-const NewJobForm = ({ onClose, onSubmit }: NewJobFormProps) => {
+const NewJobForm = ({  onSubmit }: NewJobFormProps) => {
+  const [orderno, setOrderno] = useState('');
   const [title, setTitle] = useState('');
+  
+
+
   const [size, setSize] = useState('small');
-  const [type, setType] = useState('default');
+  const [type, setType] = useState('Type');
   const [deadline, setDeadline] = useState(0); 
 
   
 
   const handleSubmit = () => {
     const id = `cube-${Math.random().toString(36).substr(2, 9)}`;
-    onSubmit({ id, title, size, type,deadline, tickId: null });
-    onClose();
+    onSubmit({ id,orderno, title, size, type,deadline, tickId: null });
+    
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
-      <div className="bg-white rounded-2xl shadow-xl p-8 border border-yellow-200 max-w-md w-full">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Create New Job</h2>
+    <div className=" flex items-center justify-center ">
+      <div className=" rounded-2xl  p-12 ">
+        
 
-        <div className="space-y-4">
+        <div className="flex flex-wrap gap-4">
           <div>
-            <label className="block text-sm font-medium">Job Title</label>
+            <label className="block text-lg font-medium mb-2"></label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg"
-              placeholder="e.g. Design Review"
+              className="w-full px-6 py-4 border-2 border-black rounded-lg text-lg min-w-[250px]"
+              placeholder="Customer name"
             />
           </div>
-
           <div>
-            <label className="block text-sm font-medium">Size</label>
+            <label className="block text-lg font-medium mb-2"></label>
+            <input
+              type="text"
+              value={orderno}
+              onChange={(e) => setOrderno(e.target.value)}
+              className="w-full px-6 py-4 border-2 border-black rounded-lg text-lg min-w-[250px]"
+              placeholder="Order number"
+            />
+          </div>
+          
+                    
+          <div>
+            <label className="block text-lg font-medium mb-2"></label>
             <select
-              value={size}
-              onChange={(e) => setSize(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg"
+              value={deadline}
+              onChange={(e) => setDeadline(Number(e.target.value))}
+              className="w-full px-6 py-4 border-2 border-black rounded-lg text-lg min-w-[250px]"
             >
-              <option value="small">Small</option>
-              <option value="medium">Medium</option>
-              <option value="large">Large</option>
+              {Array.from({ length: 24 }, (_, i) => (
+                <option key={i} value={i}>
+                  {i.toString().padStart(2, '0')}:00
+                </option>
+              ))}
             </select>
           </div>
 
+          
+
           <div>
-            <label className="block text-sm font-medium">Type</label>
+            <label className="block text-lg font-medium mb-2"></label>
             <select
               value={type}
               onChange={(e) => setType(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg"
+              className="w-full px-6 py-4 border-2 border-black rounded-lg text-lg min-w-[250px]"
+              
             >
-              <option value="default">Default</option>
-              <option value="urgent">Urgent</option>
-              <option value="low-priority">Low Priority</option>
+              <option value="default">Ronaldo</option>
+              <option value="urgent">Digtal</option>
+              <option value="low-priority">Wood</option>
             </select>
           </div>
-
-          <div>
-  <label className="block text-sm font-medium">Deadline (Hour)</label>
-  <select
-    value={deadline}
-    onChange={(e) => setDeadline(Number(e.target.value))}
-    className="w-full px-4 py-2 border rounded-lg"
+           <button
+  onClick={handleSubmit}
+  className="w-20 h-15 mt-2  border-2 border-black rounded-lg text-lg hover:bg-gray-500 flex items-center justify-center "
+>
+  <svg
+    className="w-6 h-6"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
   >
-    {Array.from({ length: 24 }, (_, i) => (
-      <option key={i} value={i}>
-        {i.toString().padStart(2, '0')}:00
-      </option>
-    ))}
-  </select>
-</div>
+    <path d="M12 2v20M2 12h20" />
+  </svg>
+</button>
 
-          <div className="flex justify-end gap-4">
-            <button
-              onClick={onClose}
-              className="text-red-500 hover:underline"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmit}
-              className="bg-[#636255] text-white px-6 py-2 rounded-lg hover:bg-yellow-500"
-            >
-              Create
-            </button>
-          </div>
+          
+
+          
+           
+           
+          
         </div>
       </div>
     </div>

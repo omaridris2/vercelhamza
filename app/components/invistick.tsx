@@ -3,7 +3,7 @@
 import React from 'react';
 import { useDroppable } from '@dnd-kit/core';
 
-const DroppableTick = ({
+const Invistick = ({
   id,
   children,
 }: {
@@ -18,8 +18,8 @@ const DroppableTick = ({
       
       
       <div
-        className={`h-20  transition-all duration-200 ${
-          isOver ? ' h-20' : '  h-20'
+        className={`h-20 border-l-4 transition-all duration-200 ${
+          isOver ? 'border-gray-500 h-25' : 'border-gray-300 border-dashed h-20'
         }`}
       />
       
@@ -30,4 +30,4 @@ const DroppableTick = ({
   );
 };
 
-export default DroppableTick;
+export default Invistick;
