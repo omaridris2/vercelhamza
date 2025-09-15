@@ -128,7 +128,7 @@ const DraggableCube = ({
           visibility: isDragging ? 'visible' : 'visible', // Added to ensure visibility
         }}
       >
-        <div className="text-xl text-left px-1">
+        <div className="text-xl text-left px-1 font-medium">
           <span>{title}</span>
           {<br />}{orderno}
           </div>

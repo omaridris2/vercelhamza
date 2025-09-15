@@ -5,6 +5,7 @@ import DroppableTick from './DroppableTick';
 import NewJobForm from './NewJobForm';
 
 import Invistick from './invistick';
+
 type User = {
   id: string;
   name: string;
@@ -13,20 +14,28 @@ type User = {
   createdAt: Date;
 };
 
+type CubeType = "Roland" | "Digital" | "Sing" | "Laser" | "Wood" | "Reprint";
+
+const CUBE_TYPES: CubeType[] = ["Roland", "Digital", "Sing", "Laser", "Wood", "Reprint"];
+
 export const Timeline = () => {
   const [activeTab, setActiveTab] = useState<'task management' | 'user management' | 'task tracking'>('task management');
   const scrollRef = useRef<HTMLDivElement>(null);
+  
+  // Add filter states
+  const [activeFilters, setActiveFilters] = useState<CubeType[]>([]);
+  const [showAllTypes, setShowAllTypes] = useState(true);
 
-    const scroll = (direction: "left" | "right") => {
-      if (scrollRef.current) {
-        const scrollAmount = 200; // pixels to scroll
-        if (direction === "left") {
-          scrollRef.current.scrollBy({ left: -scrollAmount, behavior: "smooth" });
-        } else {
-          scrollRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
-        }
+  const scroll = (direction: "left" | "right") => {
+    if (scrollRef.current) {
+      const scrollAmount = 200; // pixels to scroll
+      if (direction === "left") {
+        scrollRef.current.scrollBy({ left: -scrollAmount, behavior: "smooth" });
+      } else {
+        scrollRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
       }
-    };
+    }
+  };
 
   const TICKS = Array.from({ length: 24 });
   const INVITICKS = Array.from({ length: 24 });
@@ -36,7 +45,6 @@ export const Timeline = () => {
     tickId: string | null;
     title: string;
     orderno: string;
-    
     size: string;
     type: string;
     completed: boolean;
@@ -50,6 +58,51 @@ export const Timeline = () => {
 
   // Add missing showMenu state
   const [showMenu, setShowMenu] = useState(false);
+
+  // Filter functions
+  const toggleFilter = (type: CubeType) => {
+    setActiveFilters(prev => {
+      if (prev.includes(type)) {
+        const newFilters = prev.filter(f => f !== type);
+        setShowAllTypes(newFilters.length === 0);
+        return newFilters;
+      } else {
+        setShowAllTypes(false);
+        return [...prev, type];
+      }
+    });
+  };
+
+  const clearAllFilters = () => {
+    setActiveFilters([]);
+    setShowAllTypes(true);
+  };
+
+  const showAllTypesHandler = () => {
+    setActiveFilters([]);
+    setShowAllTypes(true);
+  };
+
+  // Filter cubes based on active filters
+  const getFilteredCubes = () => {
+    if (showAllTypes || activeFilters.length === 0) {
+      return cubes;
+    }
+    return cubes.filter(cube => activeFilters.includes(cube.type as CubeType));
+  };
+
+  // Get type-specific color classes
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'Roland': return 'bg-[#636255] border-bg-[#636255] text-white';
+      case 'Digital': return 'bg-[#636255] border-bg-[#636255] text-white';
+      case 'Sing': return 'bg-[#636255] border-bg-[#636255] text-white';
+      case 'Laser': return 'bg-[#636255] border-bg-[#636255] text-white';
+      case 'Wood': return 'bg-[#636255] border-bg-[#636255] text-white';
+      case 'Reprint': return 'bg-[#636255] border-bg-[#636255] text-white';
+      default: return 'bg-[#636255] border-bg-[#636255] text-white';
+    }
+  };
 
   const handleComplete = (id: string) => {
     setCubes(prev =>
@@ -129,6 +182,8 @@ export const Timeline = () => {
     );
   };
 
+  const filteredCubes = getFilteredCubes();
+
   return (
     <div>
       <h2 className="text-2xl font-bold text-gray-900">Work Timeline</h2>
@@ -141,24 +196,65 @@ export const Timeline = () => {
         onSubmit={handleJobSubmit}
       />
       
-      <div className='flex gap-20 mb-5'>
-        <div className="text-2xl mb-20">Total Tasks: {cubes.length}</div>
-        <div className="text-2xl mb-20">Tasks Completed: {cubes.filter(c => c.completed).length}</div>
-        <div className="text-2xl mb-20">Missed Tasks: {cubes.filter(c => !c.completed).length}</div>
-        <div className="text-2xl mb-20">In Progress: {cubes.filter(c => !c.completed && c.tickId !== null).length}</div>
+      {/* Filter Buttons */}
+      <div className="mb-6">
+        
+        <div className="flex flex-wrap gap-5 ">
+          <button
+             onClick={showAllTypesHandler}
+             className={`px-4 py-2 rounded-lg border-2 font-medium transition-colors text-2xl ${
+               showAllTypes 
+                 ? 'bg-[#636255] text-white border-[#636255]'
+                 : 'bg-white text-[#636255] border-[#636255] hover:bg-gray-50'
+             }`}
+           >
+            All Types 
+          </button>
+          
+          {CUBE_TYPES.map(type => {
+            const typeCount = cubes.filter(c => c.type === type).length;
+            const isActive = activeFilters.includes(type);
+            
+            return (
+              <button
+                key={type}
+                onClick={() => toggleFilter(type)}
+                className={`px-12 py-3.5 rounded-lg border-2 font-medium transition-colors text-2xl ${
+                  isActive
+                    ? `${getTypeColor(type)} border-current`
+                    : 'bg-white text-[#636255] border-[#636255] border-2 hover:bg-gray-50'
+                }`}
+              >
+                {type} 
+              </button>
+            );
+          })}
+        </div>
+        
+        
+      </div>
+      
+      <div className='flex gap-20 mb-4'>
+        <div className="text-2xl ">Total Tasks: {filteredCubes.length}</div>
+        <div className="text-2xl ">Tasks Completed: {filteredCubes.filter(c => c.completed).length}</div>
+        <div className="text-2xl ">Missed Tasks: {filteredCubes.filter(c => !c.completed).length}</div>
+        <div className="text-2xl ">In Progress: {filteredCubes.filter(c => !c.completed && c.tickId !== null).length}</div>
       </div>
 
       {/* Task Placeholder Area */}
       <div className="mb-8">
-        <h3 className="text-lg font-semibold text-gray-700 mb-4">Task Queue - Click or Drag to Timeline</h3>
+        <h3 className="text-lg font-semibold text-gray-700 mb-4">Task Queue - Click To Drop</h3>
         <div className="min-h-[120px] bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-4">
-          {cubes.filter(c => c.tickId === null).length === 0 ? (
+          {filteredCubes.filter(c => c.tickId === null).length === 0 ? (
             <div className="flex items-center justify-center h-full text-gray-500 italic">
-              No tasks in queue. Create a new task to get started.
+              {activeFilters.length > 0 
+                ? `No ${activeFilters.join(', ')} tasks in queue.`
+                : "No tasks in queue. Create a new task to get started."
+              }
             </div>
           ) : (
             <div className="flex flex-wrap gap-4">
-              {cubes.filter(c => c.tickId === null).map(cube => (
+              {filteredCubes.filter(c => c.tickId === null).map(cube => (
                 <div
                   key={cube.id}
                   onClick={() => moveCubeToTimeline(cube.id)}
@@ -213,7 +309,7 @@ export const Timeline = () => {
             <div className="flex justify-between items-end h-32 w-full min-w-[1200px] gap-[20px]">
               {TICKS.map((_, i) => {
                 const tickId = `tick-${i}`;
-                const cubesInTick = cubes.filter(c => c.tickId === tickId);
+                const cubesInTick = filteredCubes.filter(c => c.tickId === tickId);
 
                 return (
                   <DroppableTick key={tickId} id={tickId}>

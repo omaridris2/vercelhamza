@@ -14,7 +14,7 @@ const NewJobForm = ({  onSubmit }: NewJobFormProps) => {
 
 
   const [size, setSize] = useState('small');
-  const [type, setType] = useState('Type');
+  const [type, setType] = useState('Roland');
   const [deadline, setDeadline] = useState(0); 
 
   
@@ -26,11 +26,11 @@ const NewJobForm = ({  onSubmit }: NewJobFormProps) => {
   };
 
   return (
-    <div className=" flex items-center justify-center ">
-      <div className=" rounded-2xl  p-12 ">
+    <div className="flex  items-center justify-center ">
+      <div className=" flex-1 min-w-[240px] ">
         
 
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap gap-10 mb-10">
           <div>
             <label className="block text-lg font-medium mb-2"></label>
             <input
@@ -78,9 +78,12 @@ const NewJobForm = ({  onSubmit }: NewJobFormProps) => {
               className="w-full px-6 py-4 border-2 border-black rounded-lg text-lg min-w-[250px]"
               
             >
-              <option value="default">Ronaldo</option>
-              <option value="urgent">Digtal</option>
-              <option value="low-priority">Wood</option>
+              <option value="Roland">Roland</option>
+              <option value="Digital">Digital</option>
+              <option value="Sing">Sing</option>
+              <option value="Laser">Laser</option>
+              <option value="Wood">Wood</option>
+              <option value="Reprint">Reprint</option>
             </select>
           </div>
            <button
