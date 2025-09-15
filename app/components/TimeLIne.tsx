@@ -243,8 +243,8 @@ export const Timeline = () => {
 
       {/* Task Placeholder Area */}
       <div className="mb-8">
-        <h3 className="text-lg font-semibold text-gray-700 mb-4">Task Queue - Click To Drop</h3>
-        <div className="min-h-[120px] bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-4">
+        <h3 className="text-lg font-semibold text-gray-700 ">Task Queue - Click To Drop</h3>
+        <div className="min-h-[10px] bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-4">
           {filteredCubes.filter(c => c.tickId === null).length === 0 ? (
             <div className="flex items-center justify-center h-full text-gray-500 italic">
               {activeFilters.length > 0 

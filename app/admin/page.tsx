@@ -12,6 +12,7 @@ import AddPrintForm from '../components/NewPrintForm';
 import { Timeline } from '../components/TimeLIne';
 
 import UserTable from '../components/UsersMenu';
+import PrintTypesMenu from '../components/PrintTypesMenu';
 
 type DiscountCode = {
   id: string;
@@ -364,7 +365,7 @@ const AdminTimelinePage = () => {
         )}
 
         {activeSection === 'printing-types' && (
-          <div className="bg-white rounded-2xl shadow-xl p-12 border border-yellow-200">
+          <div className=" rounded-2xl  p-12 ">
             <div className='flex items-center justify-between mb-8'>
               <h2 className="text-2xl font-bold text-gray-900">Printing Types</h2>
               <button 
@@ -374,7 +375,7 @@ const AdminTimelinePage = () => {
                 Add Print Type
               </button>
             </div>
-            <div className="text-lg text-gray-600">Printing types management coming soon...</div>
+            <PrintTypesMenu />
             
             {showPrintMenu && (
               <AddPrintForm
@@ -483,7 +484,7 @@ const AdminTimelinePage = () => {
 
       {showMenu && (
         <NewJobForm
-          onClose={() => setShowMenu(false)}
+          
           onSubmit={handleJobSubmit}
         />
       )}

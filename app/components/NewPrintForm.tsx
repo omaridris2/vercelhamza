@@ -264,7 +264,7 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900 bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">
+            <h2 className="text-3xl font-bold text-gray-900 bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text ">
               Add New Product
             </h2>
             <p className="text-gray-500 mt-1">Create a new product with customizable options</p>
