@@ -11,55 +11,60 @@ const NewUserForm = ({ onClose, onSubmit }: NewUserFormProps) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('Designer');
-  
+  const [password, setPassword] = useState('');
 
   const handleSubmit = async () => {
-  // Basic validation
-  if (!name.trim() || !email.trim()) {
-    alert('Please fill in all required fields');
-    return;
-  }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    alert('Please enter a valid email address');
-    return;
-  }
-
-  try {
-    const res = await fetch('/api/create-user', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email,
-        password: 'TempPassword123!', // you can randomize this or let admin choose
-        name,
-        role,
-      }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      alert(`Error: ${data.error}`);
+    // Basic validation
+    if (!name.trim() || !email.trim() || !password.trim()) {
+      alert('Please fill in all required fields');
       return;
     }
 
-    // Call parent onSubmit with the new user info
-    onSubmit({
-      id: data.user.id,
-      name,
-      email,
-      role,
-    });
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      alert('Please enter a valid email address');
+      return;
+    }
 
-    onClose();
-  } catch (err) {
-    console.error(err);
-    alert('Something went wrong creating the user');
-  }
-};
+    // Password validation
+    if (password.length < 8) {
+      alert('Password must be at least 8 characters long');
+      return;
+    }
 
+    try {
+      const res = await fetch('/api/create-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          password,
+          name,
+          role,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(`Error: ${data.error}`);
+        return;
+      }
+
+      // Call parent onSubmit with the new user info
+      onSubmit({
+        id: data.user.id,
+        name,
+        email,
+        role,
+      });
+
+      onClose();
+    } catch (err) {
+      console.error(err);
+      alert('Something went wrong creating the user');
+    }
+  };
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
@@ -92,6 +97,20 @@ const NewUserForm = ({ onClose, onSubmit }: NewUserFormProps) => {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
               placeholder="Enter email address"
+            />
+          </div>
+
+          {/* Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Password <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+              placeholder="Minimum 8 characters"
             />
           </div>
 

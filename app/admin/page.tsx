@@ -250,19 +250,26 @@ const AdminTimelinePage = () => {
     <div className="min-h-screen bg-gradient-to-br from-[#f8f8f9] to-[#f8f8f9] p-6 relative">
       <div className="max-w-screen-xl mx-auto">
         {/* Header */}
-        <div className="    mb-8   flex justify-between items-center">
-          {/* Three dots*/}
-          <button
-            onClick={() => setIsDrawerOpen(true)}
-            className="flex flex-row gap-1 p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-            <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-            <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-          </button>
-          
-          <div className="w-8"></div> {/* Spacer for centering */}
-        </div>
+        <div className="mb-8 flex justify-between items-center">
+  {/* Left button */}
+  <button
+    onClick={() => setIsDrawerOpen(true)}
+    className="flex flex-row gap-1 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+  >
+    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+  </button>
+
+  {/* Right logo */}
+  <img
+    src="/logo.svg"
+    alt="Logo"
+    width={120}
+    height={120}
+    className="mb-0"
+  />
+</div>
         
         {/* Left Drawer */}
         <div className={`fixed left-0 top-0 h-full w-80 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${

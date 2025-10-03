@@ -1,147 +1,144 @@
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { useState, FormEvent } from 'react'
+import { supabase } from '@/lib/supabaseClient'
+import { useRouter } from 'next/navigation'
 
-type ProductMenuOption = {
-  id: number;
-  option_name: string;
-  price: number;
-};
+export default function LoginPage() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState('')
+  const router = useRouter()
 
-type ProductMenu = {
-  id: number;
-  name: string;
-  product_menu_options: ProductMenuOption[];
-};
+  const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setLoading(true)
+    setMessage('')
 
-type Product = {
-  id: number;
-  name: string;
-  image_url: string | null; 
-  product_menus: ProductMenu[];
-};
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-const Product29Page = () => {
-  const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Selected options per menu
-  const [selectedOptions, setSelectedOptions] = useState<Record<number, number | null>>({});
-
-  // Fetch product 29 on mount
-  useEffect(() => {
-    const fetchProduct = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('products')
-          .select(`
-            id,
-            name,
-            image_url,
-            product_menus (
-              id,
-              name,
-              product_menu_options (
-                id,
-                option_name,
-                price
-              )
-            )
-          `)
-          .eq('id', 29)
-          .single();
-
-        if (error || !data) {
-          setError('Product not found');
-        } else {
-          setProduct(data as Product);
-          // Initialize selected options
-          const initialSelections = Object.fromEntries(
-            data.product_menus.map((menu: ProductMenu) => [menu.id, null])
-          );
-          setSelectedOptions(initialSelections);
-        }
-      } catch (err) {
-        setError('Failed to fetch product');
-      } finally {
-        setLoading(false);
+      if (error) {
+        setMessage(`Error: ${error.message}`)
+        setLoading(false)
+        return
       }
-    };
 
-    fetchProduct();
-  }, []);
+      const user = data.user
+      if (!user) {
+        setMessage('No user returned from login')
+        setLoading(false)
+        return
+      }
 
-  const handleSelect = (menuId: number, optionId: number) => {
-    setSelectedOptions((prev) => ({
-      ...prev,
-      [menuId]: Number(optionId),
-    }));
-  };
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
 
-  const totalPrice = useMemo(() => {
-    if (!product) return 0;
-    return product.product_menus.reduce((sum, menu) => {
-      const selectedId = selectedOptions[menu.id];
-      if (!selectedId) return sum;
-      const selectedOpt = menu.product_menu_options.find(
-        (opt) => Number(opt.id) === selectedId
-      );
-      return sum + (selectedOpt?.price || 0);
-    }, 0);
-  }, [selectedOptions, product]);
+      if (profileError) {
+        setMessage(`Error fetching profile: ${profileError.message}`)
+        setLoading(false)
+        return
+      }
 
-  if (loading) return <div className="p-6 text-center">Loading...</div>;
-  if (error || !product) return <div className="p-6 text-center">{error}</div>;
+      setMessage('Login successful! Redirecting...')
+
+      if (profile?.role === 'Admin') {
+        router.push('/admin')
+      } else {
+        router.push('/home')
+      }
+    } catch (err) {
+      setMessage('An unexpected error occurred')
+      console.error('⚠️ Login error:', err)
+    }
+
+    setLoading(false)
+  }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-6">
-      <h1 className="text-3xl font-bold text-gray-900">{product.name}</h1>
-      <img 
-        src={product.image_url || ''} 
-        alt={product.name} 
-        className="w-64 h-64 object-cover rounded-lg shadow-md my-4" 
-      />
+    <main className="flex justify-center items-center min-h-screen font-sans">
+      <div className="flex flex-col items-center">
+        {/* Logo on top */}
+        <img
+          src="/logo.svg"
+          alt="Logo"
+          width={200}
+          height={200}
+          className="mb-6"
+        />
 
-      <div className="w-full max-w-md mt-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-2">Menus</h2>
-        {product.product_menus.map((menu) => (
-          <div key={menu.id} className="border rounded-lg p-3 mb-3 bg-white shadow-sm">
-            <h3 className="text-lg font-medium text-gray-700">{menu.name}</h3>
-            <ul className="mt-2 space-y-2">
-              {menu.product_menu_options.map((opt) => (
-                <li key={opt.id} className="flex justify-between items-center">
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name={`menu-${menu.id}`}
-                      value={opt.id}
-                      checked={selectedOptions[menu.id] === opt.id}
-                      onChange={() => handleSelect(menu.id, opt.id)}
-                    />
-                    <span>{opt.option_name}</span>
-                  </label>
-                  <span className="font-semibold">${opt.price}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+        {/* Login box below */}
+        <div className="w-100 max-w-sm p-8 border border-slate-200 rounded-lg shadow-md">
+          <h1 className="text-center text-2xl font-semibold mb-8">Login</h1>
+
+          <form onSubmit={handleLogin}>
+            <div className="mb-4">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Email:
+              </label>
+              <input
+                type="email"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full px-3 py-3 border border-gray-300 rounded-md text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            <div className="mb-6">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Password:
+              </label>
+              <input
+                type="password"
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full px-3 py-3 border border-gray-300 rounded-md text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className={`w-full py-3 px-4 text-white font-medium rounded-md text-base transition-colors ${
+                loading
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-[#636254] hover:bg-[#545447] cursor-pointer'
+              }`}
+            >
+              {loading ? 'Logging in...' : 'Login'}
+            </button>
+          </form>
+
+          {message && (
+            <div
+              className={`mt-4 p-3 rounded-md border ${
+                message.includes('Error')
+                  ? 'bg-red-50 text-red-700 border-red-200'
+                  : 'bg-green-50 text-green-700 border-green-200'
+              }`}
+            >
+              {message}
+            </div>
+          )}
+        </div>
       </div>
-
-      <div className="mt-6 text-xl font-bold text-gray-900">
-        Total: ${totalPrice.toFixed(2)}
-      </div>
-
-      <div className="mt-4 text-gray-700">
-        <h3 className="font-medium">Selected Options:</h3>
-        <pre className="text-sm bg-gray-200 p-2 rounded">
-          {JSON.stringify(selectedOptions, null, 2)}
-        </pre>
-      </div>
-    </div>
-  );
-};
-
-export default Product29Page;
+    </main>
+  )
+}
