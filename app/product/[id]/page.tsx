@@ -1,7 +1,7 @@
- 'use client';
-
-import React, { useState, useEffect } from "react";
+// app/product/[id]/page.tsx
+import React from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import ProductPageClient from './ProductPageClient';
 
 type ProductMenuOption = {
   id: number;
@@ -18,45 +18,27 @@ type ProductMenu = {
 type Product = {
   id: number;
   name: string;
-  image_url: string;
+  image_url: string | null;
   product_menus: ProductMenu[];
 };
 
-interface ProductPageClientProps {
-  product: Product;
+interface PageProps {
+  params: { id: string };
 }
 
-const ProductPageClient = ({ product }: { product: Product }) => {
-  const [selectedOptions, setSelectedOptions] = useState<Record<number, ProductMenuOption>>({});
-
-  const handleSelect = (menuId: number, option: ProductMenuOption) => {
-    setSelectedOptions(prev => ({ ...prev, [menuId]: option }));
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 sm:p-8">
-
-    </div>
-  );
-};
-
-// Server Component
-// Server Component
-export default async function ProductPage({ params }: { params: { id: string } }) {
-  const { id } = params;
-  const productId = Number(id);
+export default async function ProductPage({ params }: PageProps) {
+  const productId = Number(params.id);
 
   if (isNaN(productId)) {
     return <div className="p-6 text-center">Invalid Product ID</div>;
   }
 
   const { data: product, error } = await supabase
-    .from("products")
+    .from('products')
     .select(`
       id,
       name,
       image_url,
-      base_price,
       product_menus (
         id,
         name,
@@ -67,12 +49,13 @@ export default async function ProductPage({ params }: { params: { id: string } }
         )
       )
     `)
-    .eq("id", productId)
+    .eq('id', productId)
     .single();
 
   if (error || !product) {
     return <div className="p-6 text-center">Product not found</div>;
   }
 
+  // ✅ Only render client component after product data is ready
   return <ProductPageClient product={product as Product} />;
 }

@@ -9,7 +9,7 @@ import NewCodeForm from '../components/NewCodeForm';
 import NewUserForm from '../components/NewUserForm';
 import AddPrintForm from '../components/NewPrintForm';
 
-import { Timeline } from '../components/TimeLIne';
+import  Timeline  from '../components/TimeLIne';
 
 import UserTable from '../components/UsersMenu';
 import PrintTypesMenu from '../components/PrintTypesMenu';
@@ -359,7 +359,11 @@ const AdminTimelinePage = () => {
         {activeSection === 'dashboard' && (
           <div className="">
            <div>
-            <Timeline />
+            <Timeline 
+            users={users} 
+            assignedUsers={assignedUsers}
+            onAssignUser={handleAssignUser}
+             />
           </div>
           </div>
         )}
@@ -464,7 +468,7 @@ const AdminTimelinePage = () => {
         )}
 
         {activeSection === 'user-accounts' && (
-          <div className="bg-white rounded-2xl shadow-xl p-12 border border-yellow-200">
+          <div className="">
             <div className='flex items-center justify-between mb-8'>
               <h2 className="text-2xl font-bold text-gray-900">User Accounts</h2>
               <button onClick={handleAddUser} className="bg-[#636255] text-white px-20 py-2 rounded-lg hover:bg-yellow-500">Add User</button>

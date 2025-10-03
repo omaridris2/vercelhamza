@@ -1,34 +1,39 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { DndContext, closestCorners, DragEndEvent } from '@dnd-kit/core';
 import DraggableCube from './DraggableCube';
 import DroppableTick from './DroppableTick';
 import NewJobForm from './NewJobForm';
-
-import Invistick from './invistick';
+import { fetchOrders } from '@/app/actions/orderActions';
 
 type User = {
   id: string;
   name: string;
   email: string;
-  title: string;
+  role: string;
   createdAt: Date;
 };
+
+interface UserTableProps {
+  users: User[];
+  assignedUsers: { [key: string]: string | null };
+  onAssignUser: (cubeId: string, userId: string | null) => void;
+  loading?: boolean;
+}
 
 type CubeType = "Roland" | "Digital" | "Sing" | "Laser" | "Wood" | "Reprint";
 
 const CUBE_TYPES: CubeType[] = ["Roland", "Digital", "Sing", "Laser", "Wood", "Reprint"];
 
-export const Timeline = () => {
-  const [activeTab, setActiveTab] = useState<'task management' | 'user management' | 'task tracking'>('task management');
+const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
+  const [activeTab, setActiveTab] = useState<'task creation' | 'user management' | 'task tracking'>('task creation');
   const scrollRef = useRef<HTMLDivElement>(null);
   
-  // Add filter states
   const [activeFilters, setActiveFilters] = useState<CubeType[]>([]);
   const [showAllTypes, setShowAllTypes] = useState(true);
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
-      const scrollAmount = 200; // pixels to scroll
+      const scrollAmount = 200;
       if (direction === "left") {
         scrollRef.current.scrollBy({ left: -scrollAmount, behavior: "smooth" });
       } else {
@@ -38,7 +43,6 @@ export const Timeline = () => {
   };
 
   const TICKS = Array.from({ length: 24 });
-  const INVITICKS = Array.from({ length: 24 });
   
   const [cubes, setCubes] = useState<{
     id: string;
@@ -48,18 +52,46 @@ export const Timeline = () => {
     size: string;
     type: string;
     completed: boolean;
+    orderData?: any; // Store full order data for viewing
   }[]>([]);
 
-  // Add users state
-  const [users, setUsers] = useState<User[]>([]);
-
-  // Add state for assigned users
   const [assignedUsers, setAssignedUsers] = useState<{[key: string]: string | null}>({});
-
-  // Add missing showMenu state
   const [showMenu, setShowMenu] = useState(false);
 
-  // Filter functions
+  // Fetch orders on component mount
+  useEffect(() => {
+    loadOrders();
+  }, []);
+
+  const loadOrders = async () => {
+    console.log('Loading orders...');
+    const result = await fetchOrders();
+    console.log('Fetch result:', result);
+    
+    if (result.success && result.orders && result.orders.length > 0) {
+      const orderCubes = result.orders.map((order: any) => {
+        const orderItem = order.order_items?.[0];
+        const product = orderItem?.products;
+        
+        return {
+          id: `order-${order.id}`,
+          tickId: null,
+          title: product?.name || 'Order',
+          orderno: order.id.toString(),
+          size: `Qty: ${order.Quantity || 1}`,
+          type: 'Roland', // Default type - you can change this based on product
+          completed: order.status === 'completed',
+          orderData: order
+        };
+      });
+      
+      console.log('Created order cubes:', orderCubes);
+      setCubes(orderCubes);
+    } else {
+      console.log('No orders found or fetch failed');
+    }
+  };
+
   const toggleFilter = (type: CubeType) => {
     setActiveFilters(prev => {
       if (prev.includes(type)) {
@@ -83,7 +115,6 @@ export const Timeline = () => {
     setShowAllTypes(true);
   };
 
-  // Filter cubes based on active filters
   const getFilteredCubes = () => {
     if (showAllTypes || activeFilters.length === 0) {
       return cubes;
@@ -91,7 +122,6 @@ export const Timeline = () => {
     return cubes.filter(cube => activeFilters.includes(cube.type as CubeType));
   };
 
-  // Get type-specific color classes
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'Roland': return 'bg-[#636255] border-bg-[#636255] text-white';
@@ -130,7 +160,6 @@ export const Timeline = () => {
     }
   };
 
-  // Handle user assignment to cube
   const handleAssignUser = (cubeId: string, userId: string | null) => {
     setAssignedUsers(prev => ({
       ...prev,
@@ -138,41 +167,36 @@ export const Timeline = () => {
     }));
   };
 
-  // Add missing handleAddJob function
   const handleAddJob = () => {
     setShowMenu(true);
   };
 
-  // Update handleJobSubmit function to place new cubes in placeholder area
   const handleJobSubmit = (jobData: { 
     id: string;
     title: string; 
     orderno: string;
     size: string;
     type: string;
+    deadline: number;
   }) => {
     const newCube = {
       ...jobData,
-      tickId: null, // Place new cube in placeholder area initially
+      tickId: null,
       completed: false
     };
     setCubes(prev => [...prev, newCube]);
     setShowMenu(false);
   };
 
-  // NEW FUNCTION: Move cube from task queue to first available timeline slot
   const moveCubeToTimeline = (cubeId: string) => {
-    // Find the first available tick (one with the fewest cubes)
     const tickCounts = TICKS.map((_, i) => {
       const tickId = `tick-${i}`;
       const cubesInTick = cubes.filter(c => c.tickId === tickId).length;
       return { tickId, count: cubesInTick };
     });
 
-    // Sort by count to find the tick with the fewest cubes
     const availableTick = tickCounts.sort((a, b) => a.count - b.count)[0];
 
-    // Move the cube to this tick
     setCubes(prev =>
       prev.map(cube =>
         cube.id === cubeId
@@ -186,18 +210,85 @@ export const Timeline = () => {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900">Work Timeline</h2>
-      
-      <div className='flex gap-199'>
-        
+      {/* Tab Navigation */}
+      <div className="flex items-center gap-4 mb-6">
+        <button
+          onClick={() => {
+            const tabs = ['task creation', 'user management', 'task tracking'] as const;
+            const currentIndex = tabs.indexOf(activeTab);
+            const newIndex = currentIndex > 0 ? currentIndex - 1 : tabs.length - 1;
+            setActiveTab(tabs[newIndex]);
+          }}
+          className="p-2 bg-gray-200 rounded hover:bg-gray-300 transition-colors"
+          title="Previous tab"
+        >
+          &#8592;
+        </button>
+        <h2 className="text-2xl font-bold text-gray-900">{activeTab}</h2>
+
+        <button
+          onClick={() => {
+            const tabs = ['task creation', 'user management', 'task tracking'] as const;
+            const currentIndex = tabs.indexOf(activeTab);
+            const newIndex = currentIndex < tabs.length - 1 ? currentIndex + 1 : 0;
+            setActiveTab(tabs[newIndex]);
+          }}
+          className="p-2 bg-gray-200 rounded hover:bg-gray-300 transition-colors"
+          title="Next tab"
+        >
+          &#8594;
+        </button>
       </div>
       
-      <NewJobForm
-        onSubmit={handleJobSubmit}
-      />
-      
-      {/* Filter Buttons */}
-      <div className="mb-6">
+      {activeTab === 'task creation' && (
+       <div className="">
+        <NewJobForm
+         onSubmit={handleJobSubmit}
+         />
+         
+        <div className="mb-8">
+        <h3 className="text-lg font-semibold text-gray-700 ">Task Queue - Click To Drop</h3>
+        <div className="min-h-[10px] bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-4">
+          {filteredCubes.filter(c => c.tickId === null).length === 0 ? (
+            <div className="flex items-center justify-center h-full text-gray-500 italic">
+              {activeFilters.length > 0 
+                ? `No ${activeFilters.join(', ')} tasks in queue.`
+                : "No tasks in queue. Create a new task to get started."
+              }
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-4">
+              {filteredCubes.filter(c => c.tickId === null).map(cube => (
+                <div
+                  key={cube.id}
+                  onClick={() => moveCubeToTimeline(cube.id)}
+                  className="cursor-pointer hover:transform hover:scale-105 transition-transform"
+                  title="Click to move to timeline"
+                >
+                  <DraggableCube 
+                    id={cube.id} 
+                    title={cube.title} 
+                    orderno={cube.orderno}
+                    type={cube.type} 
+                    completed={cube.completed}
+                    onDelete={deleteCube} 
+                    onComplete={handleComplete} 
+                    users={users} 
+                    onAssignUser={handleAssignUser} 
+                    assignedUser={users.find(u => u.id === assignedUsers[cube.id]) || null}
+                    orderData={cube.orderData}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        </div>
+        </div> 
+      )}
+
+      {activeTab === 'task tracking' && (
+        <div className="mb-6">
         
         <div className="flex flex-wrap gap-5 ">
           <button
@@ -230,9 +321,8 @@ export const Timeline = () => {
             );
           })}
         </div>
-        
-        
       </div>
+      )}
       
       <div className='flex gap-20 mb-4'>
         <div className="text-2xl ">Total Tasks: {filteredCubes.length}</div>
@@ -241,47 +331,7 @@ export const Timeline = () => {
         <div className="text-2xl ">In Progress: {filteredCubes.filter(c => !c.completed && c.tickId !== null).length}</div>
       </div>
 
-      {/* Task Placeholder Area */}
-      <div className="mb-8">
-        <h3 className="text-lg font-semibold text-gray-700 ">Task Queue - Click To Drop</h3>
-        <div className="min-h-[10px] bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-4">
-          {filteredCubes.filter(c => c.tickId === null).length === 0 ? (
-            <div className="flex items-center justify-center h-full text-gray-500 italic">
-              {activeFilters.length > 0 
-                ? `No ${activeFilters.join(', ')} tasks in queue.`
-                : "No tasks in queue. Create a new task to get started."
-              }
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-4">
-              {filteredCubes.filter(c => c.tickId === null).map(cube => (
-                <div
-                  key={cube.id}
-                  onClick={() => moveCubeToTimeline(cube.id)}
-                  className="cursor-pointer hover:transform hover:scale-105 transition-transform"
-                  title="Click to move to timeline"
-                >
-                  <DraggableCube 
-                    id={cube.id} 
-                    title={cube.title} 
-                    orderno={cube.orderno}
-                    type={cube.type} 
-                    completed={cube.completed}
-                    onDelete={deleteCube} 
-                    onComplete={handleComplete} 
-                    users={users} 
-                    onAssignUser={handleAssignUser} 
-                    assignedUser={users.find(u => u.id === assignedUsers[cube.id]) || null} 
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
       <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCorners}>
-        {/* Navigation buttons */}
         <div className="flex justify-between items-center m-4">
           <button
             onClick={() => scroll("left")}
@@ -298,14 +348,12 @@ export const Timeline = () => {
           </button>
         </div>
 
-        {/* Scrollable Timeline Container */}
         <div 
           ref={scrollRef}
           className="overflow-x-auto overflow-y-visible scrollbar-hide"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           <div className="min-w-max mt-70">
-            {/* Ticks (droppable) */}
             <div className="flex justify-between items-end h-32 w-full min-w-[1200px] gap-[20px]">
               {TICKS.map((_, i) => {
                 const tickId = `tick-${i}`;
@@ -330,7 +378,8 @@ export const Timeline = () => {
                           onComplete={handleComplete} 
                           users={users} 
                           onAssignUser={handleAssignUser} 
-                          assignedUser={users.find(u => u.id === assignedUsers[cube.id]) || null} 
+                          assignedUser={users.find(u => u.id === assignedUsers[cube.id]) || null}
+                          orderData={cube.orderData}
                         />
                       </div>
                     ))}
@@ -339,10 +388,8 @@ export const Timeline = () => {
               })}
             </div>
                     
-            {/* Horizontal Line */}
             <div className="border-t-4 border-dashed border-gray-300 w-full min-w-[3700px]" />
 
-            {/* Time Labels */}
             <div className="flex justify-between mt-2 w-full min-w-[1100px]">
               {TICKS.map((_, i) => (
                 <div key={i} className="text-xs text-center w-4 font-bold">{i + 1}:00</div>
@@ -354,3 +401,4 @@ export const Timeline = () => {
     </div>
   )
 }
+export default Timeline;

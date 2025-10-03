@@ -4,36 +4,73 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
 type Menu = {
+  id?: number;
   name: string;
-  options: { option: string; price: number }[];
+  options: { id?: number; option: string; price: number }[];
 };
 
-type AddProductFormProps = {
+type ProductData = {
+  id: number;
+  name: string;
+  image_url: string | null;
+  product_menus: {
+    id: number;
+    name: string;
+    product_menu_options: {
+      id: number;
+      option_name: string;
+      price: number;
+    }[];
+  }[];
+};
+
+type AddPrintFormProps = {
   onClose: () => void;
   onSuccess?: () => void;
+  editMode?: boolean;
+  productData?: ProductData;
 };
 
-const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
+const AddPrintForm = ({ onClose, onSuccess, editMode = false, productData }: AddPrintFormProps) => {
   const [name, setName] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [menus, setMenus] = useState<Menu[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [keepExistingImage, setKeepExistingImage] = useState(true);
 
-  // Clean up preview URL on unmount or when image changes
+  // Initialize form with existing data in edit mode
+  useEffect(() => {
+    if (editMode && productData) {
+      setName(productData.name);
+      setPreviewUrl(productData.image_url);
+      
+      // Transform product menus to form format
+      const transformedMenus = productData.product_menus.map(menu => ({
+        id: menu.id,
+        name: menu.name,
+        options: menu.product_menu_options.map(opt => ({
+          id: opt.id,
+          option: opt.option_name,
+          price: opt.price
+        }))
+      }));
+      setMenus(transformedMenus);
+    }
+  }, [editMode, productData]);
+
   useEffect(() => {
     return () => {
-      if (previewUrl) {
+      if (previewUrl && !editMode) {
         URL.revokeObjectURL(previewUrl);
       }
     };
-  }, [previewUrl]);
+  }, [previewUrl, editMode]);
 
-  // Validate file type and size
   const validateFile = (file: File): string | null => {
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    const maxSize = 5 * 1024 * 1024;
 
     if (!allowedTypes.includes(file.type)) {
       return 'Please select a valid image file (JPEG, PNG, or WebP)';
@@ -46,12 +83,10 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
     return null;
   };
 
-  // Handle image selection and preview
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
 
-    // Clean up previous preview
-    if (previewUrl) {
+    if (previewUrl && !editMode) {
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
     }
@@ -65,15 +100,14 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
       }
 
       setImageFile(file);
+      setKeepExistingImage(false);
       setError(null);
 
-      // Create preview URL
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
     }
   };
 
-  // Generate unique filename
   const generateFileName = (file: File): string => {
     const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
     const timestamp = Date.now();
@@ -81,39 +115,33 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
     return `product_${timestamp}_${randomStr}.${fileExt}`;
   };
 
-  // Add a new dropdown menu
   const addMenu = () => {
     setMenus([...menus, { name: '', options: [{ option: '', price: 0 }] }]);
   };
 
-  // Remove a menu
   const removeMenu = (menuIndex: number) => {
     const updated = menus.filter((_, index) => index !== menuIndex);
     setMenus(updated);
   };
 
-  // Add option to a specific menu
   const addOption = (menuIndex: number) => {
     const updated = [...menus];
     updated[menuIndex].options.push({ option: '', price: 0 });
     setMenus(updated);
   };
 
-  // Remove option from a specific menu
   const removeOption = (menuIndex: number, optionIndex: number) => {
     const updated = [...menus];
     updated[menuIndex].options = updated[menuIndex].options.filter((_, index) => index !== optionIndex);
     setMenus(updated);
   };
 
-  // Update menu name
   const updateMenu = (menuIndex: number, value: string) => {
     const updated = [...menus];
     updated[menuIndex].name = value;
     setMenus(updated);
   };
 
-  // Update option
   const updateOption = (menuIndex: number, optionIndex: number, field: 'option' | 'price', value: string) => {
     const updated = [...menus];
     if (field === 'price') {
@@ -127,14 +155,18 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation
     if (!name.trim()) {
       setError('Product name is required');
       return;
     }
 
-    if (!imageFile) {
+    if (!editMode && !imageFile) {
       setError('Product image is required');
+      return;
+    }
+
+    if (editMode && !keepExistingImage && !imageFile) {
+      setError('Please select a new image or keep the existing one');
       return;
     }
 
@@ -142,95 +174,169 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
     setError(null);
 
     try {
-      // 1. Upload image to Supabase storage
-      const fileName = generateFileName(imageFile);
-      const { error: uploadError, data: uploadData } = await supabase.storage
-        .from('product-images')
-        .upload(fileName, imageFile, {
-          cacheControl: '3600',
-          upsert: false
-        });
+      let imageUrl = productData?.image_url || null;
 
-      if (uploadError) {
-        throw new Error(`Upload failed: ${uploadError.message}`);
-      }
-
-      if (!uploadData?.path) {
-        throw new Error('Upload succeeded but no file path returned');
-      }
-
-      // 2. Get the public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(uploadData.path);
-
-      if (!publicUrl) {
-        throw new Error('Failed to get public URL for uploaded image');
-      }
-
-      // 3. Insert product into database
-      const { data: product, error: productError } = await supabase
-        .from('products')
-        .insert([{ 
-          name: name.trim(), 
-          image_url: publicUrl 
-        }])
-        .select('*')
-        .single();
-
-      if (productError) {
-        // If database insert fails, try to clean up the uploaded file
-        await supabase.storage
+      // Handle image upload if new image selected
+      if (imageFile) {
+        const fileName = generateFileName(imageFile);
+        const { error: uploadError, data: uploadData } = await supabase.storage
           .from('product-images')
-          .remove([uploadData.path]);
-        throw new Error(`Failed to save product: ${productError.message}`);
-      }
+          .upload(fileName, imageFile, {
+            cacheControl: '3600',
+            upsert: false
+          });
 
-      // 4. Insert menus + options
-      for (const menu of menus) {
-        if (!menu.name.trim()) continue; // Skip empty menu names
-
-        const { data: menuData, error: menuError } = await supabase
-          .from('product_menus')
-          .insert([{ 
-            product_id: product.id, 
-            name: menu.name.trim() 
-          }])
-          .select()
-          .single();
-
-        if (menuError) {
-          console.error('Menu insert error:', menuError);
-          continue;
+        if (uploadError) {
+          throw new Error(`Upload failed: ${uploadError.message}`);
         }
 
-        // Filter out empty options
-        const validOptions = menu.options.filter(opt => opt.option.trim());
-        
-        if (validOptions.length > 0) {
-          const optionsToInsert = validOptions.map(opt => ({
-            menu_id: menuData.id,
-            option_name: opt.option.trim(),
-            price: opt.price
-          }));
+        if (!uploadData?.path) {
+          throw new Error('Upload succeeded but no file path returned');
+        }
 
-          const { error: optionsError } = await supabase
-            .from('product_menu_options')
-            .insert(optionsToInsert);
+        const { data: { publicUrl } } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(uploadData.path);
 
-          if (optionsError) {
-            console.error('Options insert error:', optionsError);
+        if (!publicUrl) {
+          throw new Error('Failed to get public URL for uploaded image');
+        }
+
+        imageUrl = publicUrl;
+
+        // Delete old image if in edit mode
+        if (editMode && productData?.image_url) {
+          const oldPath = productData.image_url.split('/').pop();
+          if (oldPath) {
+            await supabase.storage.from('product-images').remove([oldPath]);
           }
         }
       }
 
-      // Success - reset form and close
+      if (editMode && productData) {
+        // UPDATE MODE
+        const { error: productError } = await supabase
+          .from('products')
+          .update({ 
+            name: name.trim(), 
+            image_url: imageUrl 
+          })
+          .eq('id', productData.id);
+
+        if (productError) {
+          throw new Error(`Failed to update product: ${productError.message}`);
+        }
+
+        // Delete all existing menus and options
+        const { error: deleteError } = await supabase
+          .from('product_menus')
+          .delete()
+          .eq('product_id', productData.id);
+
+        if (deleteError) {
+          console.error('Error deleting old menus:', deleteError);
+        }
+
+        // Insert updated menus and options
+        for (const menu of menus) {
+          if (!menu.name.trim()) continue;
+
+          const { data: menuData, error: menuError } = await supabase
+            .from('product_menus')
+            .insert([{ 
+              product_id: productData.id, 
+              name: menu.name.trim() 
+            }])
+            .select()
+            .single();
+
+          if (menuError) {
+            console.error('Menu insert error:', menuError);
+            continue;
+          }
+
+          const validOptions = menu.options.filter(opt => opt.option.trim());
+          
+          if (validOptions.length > 0) {
+            const optionsToInsert = validOptions.map(opt => ({
+              menu_id: menuData.id,
+              option_name: opt.option.trim(),
+              price: opt.price
+            }));
+
+            const { error: optionsError } = await supabase
+              .from('product_menu_options')
+              .insert(optionsToInsert);
+
+            if (optionsError) {
+              console.error('Options insert error:', optionsError);
+            }
+          }
+        }
+      } else {
+        // CREATE MODE (original logic)
+        const { data: product, error: productError } = await supabase
+          .from('products')
+          .insert([{ 
+            name: name.trim(), 
+            image_url: imageUrl 
+          }])
+          .select('*')
+          .single();
+
+        if (productError) {
+          if (imageFile) {
+            const fileName = imageUrl?.split('/').pop();
+            if (fileName) {
+              await supabase.storage.from('product-images').remove([fileName]);
+            }
+          }
+          throw new Error(`Failed to save product: ${productError.message}`);
+        }
+
+        for (const menu of menus) {
+          if (!menu.name.trim()) continue;
+
+          const { data: menuData, error: menuError } = await supabase
+            .from('product_menus')
+            .insert([{ 
+              product_id: product.id, 
+              name: menu.name.trim() 
+            }])
+            .select()
+            .single();
+
+          if (menuError) {
+            console.error('Menu insert error:', menuError);
+            continue;
+          }
+
+          const validOptions = menu.options.filter(opt => opt.option.trim());
+          
+          if (validOptions.length > 0) {
+            const optionsToInsert = validOptions.map(opt => ({
+              menu_id: menuData.id,
+              option_name: opt.option.trim(),
+              price: opt.price
+            }));
+
+            const { error: optionsError } = await supabase
+              .from('product_menu_options')
+              .insert(optionsToInsert);
+
+            if (optionsError) {
+              console.error('Options insert error:', optionsError);
+            }
+          }
+        }
+      }
+
       resetForm();
       onSuccess?.();
       onClose();
 
     } catch (err: unknown) {
-      console.error('Error creating product:', err);
+      console.error('Error saving product:', err);
       if (err instanceof Error) {
         setError(err.message);
       } else {
@@ -246,7 +352,7 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
     setImageFile(null);
     setMenus([]);
     setError(null);
-    if (previewUrl) {
+    if (previewUrl && !editMode) {
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
     }
@@ -261,13 +367,14 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
     <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50 p-4 backdrop-blur-sm"
          onClick={(e) => e.target === e.currentTarget && handleCancel()}>
       <div className="bg-white rounded-3xl shadow-2xl p-8 border-0 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900 bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text ">
-              Add New Product
+            <h2 className="text-3xl font-bold text-gray-900 bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text">
+              {editMode ? 'Edit Product' : 'Add New Product'}
             </h2>
-            <p className="text-gray-500 mt-1">Create a new product with customizable options</p>
+            <p className="text-gray-500 mt-1">
+              {editMode ? 'Update product details and options' : 'Create a new product with customizable options'}
+            </p>
           </div>
           <button
             onClick={handleCancel}
@@ -281,9 +388,7 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Product Details Section */}
           <div className="grid md:grid-cols-2 gap-8">
-            {/* Product Name Input */}
             <div className="space-y-2">
               <label htmlFor="productName" className="block text-sm font-semibold text-gray-800">
                 Product Name *
@@ -301,10 +406,9 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
               />
             </div>
 
-            {/* Image Upload Section */}
             <div className="space-y-2">
               <label htmlFor="productImage" className="block text-sm font-semibold text-gray-800">
-                Product Image *
+                Product Image {!editMode && '*'}
               </label>
               <div className="relative">
                 <input
@@ -320,7 +424,6 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
                 Supported: JPEG, PNG, WebP • Max size: 5MB
               </p>
               
-              {/* Image Preview */}
               {previewUrl && (
                 <div className="mt-4">
                   <div className="relative inline-block">
@@ -340,7 +443,6 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
             </div>
           </div>
 
-          {/* Dropdown Menus Section */}
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
@@ -362,11 +464,9 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
               </button>
             </div>
             
-            {/* Menu Grid */}
             <div className="grid gap-6 md:grid-cols-2">
               {menus.map((menu, menuIndex) => (
                 <div key={menuIndex} className="border-2 border-gray-200 rounded-2xl p-6 bg-gradient-to-br from-gray-50 to-white shadow-sm hover:shadow-md transition-all duration-200">
-                  {/* Menu Header */}
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-400 to-pink-400 flex items-center justify-center text-white text-sm font-bold">
                       {menuIndex + 1}
@@ -391,7 +491,6 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
                     </button>
                   </div>
                   
-                  {/* Menu Options */}
                   <div className="space-y-3">
                     {menu.options.map((opt, optionIndex) => (
                       <div key={optionIndex} className="flex gap-2">
@@ -445,7 +544,6 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
               ))}
             </div>
 
-            {/* Empty State */}
             {menus.length === 0 && (
               <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300">
                 <div className="w-16 h-16 mx-auto mb-4 bg-gray-200 rounded-full flex items-center justify-center">
@@ -459,7 +557,6 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
             )}
           </div>
 
-          {/* Error Message */}
           {error && (
             <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-6 py-4 rounded-lg">
               <div className="flex items-center">
@@ -472,7 +569,6 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
             </div>
           )}
 
-          {/* Action Buttons */}
           <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
             <button
               type="button"
@@ -485,7 +581,7 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
             <button
               type="submit"
               className="px-8 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none"
-              disabled={loading || !name.trim() || !imageFile}
+              disabled={loading || !name.trim() || (!editMode && !imageFile)}
             >
               {loading ? (
                 <span className="flex items-center">
@@ -493,14 +589,14 @@ const AddPrintForm = ({ onClose, onSuccess }: AddProductFormProps) => {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Creating Product...
+                  {editMode ? 'Updating Product...' : 'Creating Product...'}
                 </span>
               ) : (
                 <span className="flex items-center">
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  Save Product
+                  {editMode ? 'Update Product' : 'Save Product'}
                 </span>
               )}
             </button>
