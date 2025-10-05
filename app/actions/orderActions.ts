@@ -1,103 +1,168 @@
 'use server';
 
 import { createClient } from '@/lib/server';
-// 🧩 Fetch orders (optionally by date)
-export async function fetchOrders(date?: string) {
-  const supabase = await createClient(); // ✅ await added
 
-  const query = supabase
-    .from('orders')
-    .select(`
-      *,
-      order_items (
-        *,
-        products (*),
-        order_item_options (
-          *,
-          product_menu_options (
-            *,
-            product_menus (*)
+// Type for adding to cart
+type AddToCartData = {
+  product_id: number;
+  quantity: number;
+  price: number;
+  selected_option_ids: number[];
+};
+
+// 🧩 Add product to cart — automatically fetch product type
+export async function addToCart(data: AddToCartData) {
+  try {
+    const supabase = await createClient();
+    const TEMP_USER_ID = '00000000-0000-0000-0000-000000000001';
+
+    // Fetch product type
+    const { data: product, error: productError } = await supabase
+      .from('products')
+      .select('type')
+      .eq('id', data.product_id)
+      .single();
+
+    if (productError || !product) {
+      console.error('Error fetching product type:', productError);
+      return { success: false, error: 'Failed to fetch product type.' };
+    }
+
+    // Create order with product type
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        user_id: TEMP_USER_ID,
+        status: 'pending',
+        Quantity: data.quantity,
+        price: data.price,
+        type: product.type,
+      })
+      .select('id')
+      .single();
+
+    if (orderError) throw orderError;
+
+    // Create order item
+    const { data: orderItem, error: orderItemError } = await supabase
+      .from('order_items')
+      .insert({
+        order_id: order.id,
+        product_id: data.product_id,
+      })
+      .select('id')
+      .single();
+
+    if (orderItemError) throw orderItemError;
+
+    // Add order item options
+    const orderItemOptions = data.selected_option_ids.map((optionId) => ({
+      order_item_id: orderItem.id,
+      product_menu_option_id: optionId,
+    }));
+
+    const { error: optionsError } = await supabase
+      .from('order_item_options')
+      .insert(orderItemOptions);
+
+    if (optionsError) throw optionsError;
+
+    return { success: true, order_id: order.id, message: 'Added to cart successfully!' };
+  } catch (error: any) {
+    console.error('addToCart error:', error);
+    return { success: false, error: error.message || 'Unknown error' };
+  }
+}
+
+// 🧾 Fetch orders with their related data
+export async function fetchOrders() {
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from('orders')
+      .select(`
+        id,
+        status,
+        Quantity,
+        price,
+        type,
+        timeline_position,
+        timeline_date,
+        assigned_user_id,
+        order_items (
+          id,
+          product_id,
+          products (
+            name,
+            type
           )
         )
-      )
-    `);
+      `)
+      .order('created_at', { ascending: false });
 
-  if (date) {
-    query.eq('timeline_date', date);
+    if (error) throw error;
+
+    return { success: true, orders: data };
+  } catch (error: any) {
+    console.error('fetchOrders error:', error);
+    return { success: false, error: error.message || 'Failed to fetch orders' };
   }
-
-  const { data: orders, error } = await query;
-
-  if (error) {
-    console.error('Error fetching orders:', error);
-    return { success: false, error: error.message };
-  }
-
-  return { success: true, orders };
 }
 
-// 🧩 Update order timeline position
-export async function updateOrderPosition(
-  orderId: string,
-  tickId: string | null,
-  timelineDate: string
-) {
-  const supabase = await createClient(); // ✅ await added
+// 📍 Update order position on timeline
+export async function updateOrderPosition(orderId: string, tickId: string, date: string) {
+  try {
+    const supabase = await createClient();
 
-  const { error } = await supabase
-    .from('orders')
-    .update({
-      timeline_position: tickId,
-      timeline_date: timelineDate,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', orderId);
+    const { error } = await supabase
+      .from('orders')
+      .update({
+        timeline_position: tickId,
+        timeline_date: date,
+      })
+      .eq('id', orderId);
 
-  if (error) {
-    console.error('Error updating order position:', error);
+    if (error) throw error;
+    return { success: true };
+  } catch (error: any) {
+    console.error('updateOrderPosition error:', error);
     return { success: false, error: error.message };
   }
-
-  return { success: true };
 }
 
-// 🧩 Update order status
+// ✅ Update order status (e.g. completed)
 export async function updateOrderStatus(orderId: string, status: string) {
-  const supabase = await createClient(); // ✅ await added
+  try {
+    const supabase = await createClient();
 
-  const { error } = await supabase
-    .from('orders')
-    .update({
-      status,
-      updated_at: new Date().toISOString(),
-      completed_at: status === 'completed' ? new Date().toISOString() : null,
-    })
-    .eq('id', orderId);
+    const { error } = await supabase
+      .from('orders')
+      .update({ status })
+      .eq('id', orderId);
 
-  if (error) {
-    console.error('Error updating order status:', error);
+    if (error) throw error;
+    return { success: true };
+  } catch (error: any) {
+    console.error('updateOrderStatus error:', error);
     return { success: false, error: error.message };
   }
-
-  return { success: true };
 }
 
-// 🧩 Assign order to user
+// ✅ Assign order to a user
 export async function assignOrderToUser(orderId: string, userId: string | null) {
-  const supabase = await createClient(); // ✅ await added
+  try {
+    const supabase = await createClient();
 
-  const { error } = await supabase
-    .from('orders')
-    .update({
-      assigned_user_id: userId,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', orderId);
+    const { error } = await supabase
+      .from('orders')
+      .update({ assigned_user_id: userId })
+      .eq('id', orderId);
 
-  if (error) {
-    console.error('Error assigning order to user:', error);
+    if (error) throw error;
+    return { success: true };
+  } catch (error: any) {
+    console.error('assignOrderToUser error:', error);
     return { success: false, error: error.message };
   }
-
-  return { success: true };
 }

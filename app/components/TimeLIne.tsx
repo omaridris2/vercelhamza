@@ -351,14 +351,12 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
       )}
     </div>
   );
-  // ----------------------------------------------------------------------
-  // ----------------------------------------------------------------------
 
 
   return (
     <div>
       {/* Date Navigation Bar */}
-      <div className="bg-white border-b border-gray-200 p-4 mb-6 flex items-center justify-between">
+      <div className=" p-4 mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigateDate('prev')}
