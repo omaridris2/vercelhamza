@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react' // Added useCallback
 import { DndContext, closestCorners, DragEndEvent } from '@dnd-kit/core';
 import DraggableCube from './DraggableCube';
 import DroppableTick from './DroppableTick';
 import NewJobForm from './NewJobForm';
-import { fetchOrders } from '@/app/actions/orderActions';
+import { fetchOrders, updateOrderPosition, updateOrderStatus, assignOrderToUser } from '@/app/actions/orderActions';
 
 type User = {
   id: string;
@@ -30,6 +30,10 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
   
   const [activeFilters, setActiveFilters] = useState<CubeType[]>([]);
   const [showAllTypes, setShowAllTypes] = useState(true);
+  
+  // Date navigation state
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false); // Kept for the custom dropdown functionality
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -52,45 +56,123 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
     size: string;
     type: string;
     completed: boolean;
-    orderData?: any; // Store full order data for viewing
+    assignedUserId?: string | null;
+    orderData?: any;
+    timelineDate?: string | null; // Added to match loadOrders logic
   }[]>([]);
 
   const [assignedUsers, setAssignedUsers] = useState<{[key: string]: string | null}>({});
   const [showMenu, setShowMenu] = useState(false);
 
-  // Fetch orders on component mount
-  useEffect(() => {
-    loadOrders();
+  // Helper functions for Date logic
+  const formatDateForDB = useCallback((date: Date) => {
+    return date.toISOString().split('T')[0];
   }, []);
 
-  const loadOrders = async () => {
-    console.log('Loading orders...');
+  const formatDateForInput = useCallback((date: Date) => {
+    // Ensures the format is YYYY-MM-DD for the native input
+    return date.toISOString().split('T')[0];
+  }, []);
+
+  const formatDisplayDate = useCallback((date: Date) => {
+    const options: Intl.DateTimeFormatOptions = { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    };
+    return date.toLocaleDateString('en-US', options);
+  }, []);
+
+  const isToday = useCallback((date: Date) => {
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
+  }, []);
+  // End Helper functions
+
+  const loadOrders = useCallback(async () => {
+    console.log('Loading orders for date:', formatDateForDB(selectedDate));
+
+    // Fetch ALL orders (not just for selected date)
     const result = await fetchOrders();
-    console.log('Fetch result:', result);
-    
+
     if (result.success && result.orders && result.orders.length > 0) {
-      const orderCubes = result.orders.map((order: any) => {
+      const allOrderCubes = result.orders.map((order: any) => {
         const orderItem = order.order_items?.[0];
         const product = orderItem?.products;
-        
+
         return {
-          id: `order-${order.id}`,
-          tickId: null,
+          id: order.id.toString(),
+          tickId: order.timeline_position || null,
           title: product?.name || 'Order',
           orderno: order.id.toString(),
           size: `Qty: ${order.Quantity || 1}`,
-          type: 'Roland', // Default type - you can change this based on product
+          type: order.type || 'Roland',
           completed: order.status === 'completed',
-          orderData: order
+          assignedUserId: order.assigned_user_id,
+          timelineDate: order.timeline_date || null, // ✅ track which date it's placed on
+          orderData: order,
         };
       });
-      
-      console.log('Created order cubes:', orderCubes);
-      setCubes(orderCubes);
+
+      // ✅ Filter logic: show unplaced + today's placed tasks
+      const visibleCubes = allOrderCubes.filter(
+        (cube: any) =>
+          cube.tickId === null || // Always keep unplaced
+          cube.timelineDate === formatDateForDB(selectedDate) // Show placed for current date
+      );
+
+      setCubes(visibleCubes);
+
+      // Assign users
+      const assignments: { [key: string]: string | null } = {};
+      visibleCubes.forEach((cube: any) => {
+        if (cube.assignedUserId) {
+          assignments[cube.id] = cube.assignedUserId;
+        }
+      });
+      setAssignedUsers(assignments);
     } else {
-      console.log('No orders found or fetch failed');
+      setCubes([]);
+      setAssignedUsers({});
     }
+  }, [formatDateForDB, selectedDate]); // Dependencies for useCallback
+
+  // Fetch orders when component mounts or date changes
+  useEffect(() => {
+    loadOrders();
+  }, [selectedDate, loadOrders]);
+
+  // Date navigation functions
+  const navigateDate = (direction: 'prev' | 'next' | 'today') => {
+    const newDate = new Date(selectedDate);
+    
+    switch (direction) {
+      case 'prev':
+        newDate.setDate(newDate.getDate() - 1);
+        break;
+      case 'next':
+        newDate.setDate(newDate.getDate() + 1);
+        break;
+      case 'today':
+        setSelectedDate(new Date());
+        return;
+    }
+    
+    setSelectedDate(newDate);
   };
+
+  const handleDateSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // The native date input value is 'YYYY-MM-DD'.
+    // We append 'T00:00:00' to ensure the date is parsed consistently as the start of the day in the local timezone.
+    const newDate = new Date(e.target.value + 'T00:00:00');
+    if (!isNaN(newDate.getTime())) {
+      setSelectedDate(newDate);
+    }
+    // No longer closing the picker on select, as the input element handles it internally when focus is lost.
+    setIsDatePickerOpen(false); 
+  };
+
 
   const toggleFilter = (type: CubeType) => {
     setActiveFilters(prev => {
@@ -134,37 +216,56 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
     }
   };
 
-  const handleComplete = (id: string) => {
+  const handleComplete = async (id: string) => {
+    // Update local state
     setCubes(prev =>
       prev.map(cube =>
         cube.id === id ? { ...cube, completed: true } : cube
       )
     );
+    
+    // Update database
+    await updateOrderStatus(id, 'completed');
   };
 
   const deleteCube = (id: string) => {
     setCubes(prev => prev.filter(cube => cube.id !== id));
+    // Note: You might want to add a soft delete in the database instead
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { over, active } = event;
 
     if (over) {
+      const newTickId = over.id.toString();
+      
+      // Update local state
       setCubes(prev =>
         prev.map(cube =>
           cube.id === active.id
-            ? { ...cube, tickId: over.id.toString() }
+            ? { ...cube, tickId: newTickId }
             : cube
         )
+      );
+      
+      // Update database
+      await updateOrderPosition(
+        active.id.toString(), 
+        newTickId, 
+        formatDateForDB(selectedDate)
       );
     }
   };
 
-  const handleAssignUser = (cubeId: string, userId: string | null) => {
+  const handleAssignUser = async (cubeId: string, userId: string | null) => {
+    // Update local state
     setAssignedUsers(prev => ({
       ...prev,
       [cubeId]: userId
     }));
+    
+    // Update database
+    await assignOrderToUser(cubeId, userId);
   };
 
   const handleAddJob = () => {
@@ -188,7 +289,7 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
     setShowMenu(false);
   };
 
-  const moveCubeToTimeline = (cubeId: string) => {
+  const moveCubeToTimeline = async (cubeId: string) => {
     const tickCounts = TICKS.map((_, i) => {
       const tickId = `tick-${i}`;
       const cubesInTick = cubes.filter(c => c.tickId === tickId).length;
@@ -197,6 +298,7 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
 
     const availableTick = tickCounts.sort((a, b) => a.count - b.count)[0];
 
+    // Update local state
     setCubes(prev =>
       prev.map(cube =>
         cube.id === cubeId
@@ -204,12 +306,104 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
           : cube
       )
     );
+    
+    // Update database
+    await updateOrderPosition(
+      cubeId, 
+      availableTick.tickId, 
+      formatDateForDB(selectedDate)
+    );
   };
 
   const filteredCubes = getFilteredCubes();
 
+  // ----------------------------------------------------------------------
+  // 🚀 IMPROVED DATE PICKER IMPLEMENTATION 🚀
+  // ----------------------------------------------------------------------
+  const BetterDatePicker = () => (
+    <div className="relative">
+      <button
+        onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
+        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center gap-2 transition-colors"
+        aria-expanded={isDatePickerOpen}
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        <span>Pick Date</span>
+      </button>
+      
+      {/* The date input is now an actual dropdown, making it more visible and accessible */}
+      {isDatePickerOpen && (
+        <div className="absolute top-full mt-2 left-0 z-50">
+          <input
+            type="date"
+            value={formatDateForInput(selectedDate)}
+            onChange={handleDateSelect}
+            className="p-3 border border-gray-300 rounded-lg shadow-xl bg-white focus:ring-2 focus:ring-[#636255] focus:border-transparent"
+            onBlur={() => {
+              // Set a small delay to allow the handleDateSelect to fire before closing
+              setTimeout(() => setIsDatePickerOpen(false), 100);
+            }}
+            autoFocus 
+          />
+        </div>
+      )}
+    </div>
+  );
+  // ----------------------------------------------------------------------
+  // ----------------------------------------------------------------------
+
+
   return (
     <div>
+      {/* Date Navigation Bar */}
+      <div className="bg-white border-b border-gray-200 p-4 mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigateDate('prev')}
+            className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            title="Previous Day"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          
+          <button
+            onClick={() => navigateDate('today')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              isToday(selectedDate) 
+                ? 'bg-[#636255] text-white' 
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+            }`}
+          >
+            Today
+          </button>
+          
+          <button
+            onClick={() => navigateDate('next')}
+            className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            title="Next Day"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+          
+          {/* Use the new component */}
+          <BetterDatePicker />
+        </div>
+        
+        {/* Date Display (moved here for better separation from navigation) */}
+        <div className="text-xl font-semibold text-gray-800">
+          {formatDisplayDate(selectedDate)}
+          {isToday(selectedDate) && (
+            <span className="ml-2 text-sm font-normal text-green-600">(Today)</span>
+          )}
+        </div>
+      </div>
+
       {/* Tab Navigation */}
       <div className="flex items-center gap-4 mb-6">
         <button
@@ -392,8 +586,10 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
 
             <div className="flex justify-between mt-2 w-full min-w-[1100px]">
               {TICKS.map((_, i) => (
-                <div key={i} className="text-xs text-center w-4 font-bold">{i + 1}:00</div>
-              ))}
+              <div key={i} className="text-xs text-center w-4 font-bold">
+                {i}:00
+              </div>
+            ))}
             </div>
           </div>
         </div>

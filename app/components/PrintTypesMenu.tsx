@@ -12,6 +12,7 @@ type ProductData = {
   id: number;
   name: string;
   image_url: string | null;
+  type: string;
   product_menus: {
     id: number;
     name: string;
@@ -52,6 +53,7 @@ const PrintTypesMenu = () => {
         id,
         name,
         image_url,
+        type,
         product_menus (
           id,
           name,
@@ -74,22 +76,74 @@ const PrintTypesMenu = () => {
   };
 
   const handleDelete = async (productId: string) => {
-    if (!confirm("Are you sure you want to delete this product? This action cannot be undone.")) {
-      return;
+  if (!confirm("Are you sure you want to delete this product? This action cannot be undone.")) {
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    // Step 1: Get all menu IDs for this product
+    const { data: menus } = await supabase
+      .from('product_menus')
+      .select('id')
+      .eq('product_id', productId);
+
+    if (menus && menus.length > 0) {
+      const menuIds = menus.map(m => m.id);
+      
+      // Step 2: Delete all options for these menus
+      const { error: optionsError } = await supabase
+        .from('product_menu_options')
+        .delete()
+        .in('menu_id', menuIds);
+
+      if (optionsError) throw optionsError;
     }
 
-    const { error } = await supabase
+    // Step 3: Delete all menus for this product
+    const { error: menusError } = await supabase
+      .from('product_menus')
+      .delete()
+      .eq('product_id', productId);
+
+    if (menusError) throw menusError;
+
+    // Step 4: Get the product image URL before deleting
+    const { data: product } = await supabase
+      .from('products')
+      .select('image_url')
+      .eq('id', productId)
+      .single();
+
+    // Step 5: Delete the product
+    const { error: productError } = await supabase
       .from('products')
       .delete()
       .eq('id', productId);
 
-    if (error) {
-      console.error("Error deleting product:", error);
-      alert("Failed to delete product");
-    } else {
-      fetchProducts(); // Refresh the list
+    if (productError) throw productError;
+
+    // Step 6: Delete image from storage (optional cleanup)
+    if (product?.image_url && product.image_url !== 'left empty') {
+      const imagePath = product.image_url.split('/').pop();
+      if (imagePath) {
+        await supabase.storage
+          .from('product-images')
+          .remove([imagePath]);
+      }
     }
-  };
+
+    // Refresh the list
+    fetchProducts();
+    
+  } catch (error) {
+    console.error("Error deleting product:", error);
+    alert("Failed to delete product. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-
+type CubeType = "Roland" | "Digital" | "Sing" | "Laser" | "Wood" | "Reprint";
 type Menu = {
   id?: number;
   name: string;
@@ -13,6 +13,7 @@ type ProductData = {
   id: number;
   name: string;
   image_url: string | null;
+  type: string;
   product_menus: {
     id: number;
     name: string;
@@ -31,6 +32,8 @@ type AddPrintFormProps = {
   productData?: ProductData;
 };
 
+const CUBE_TYPES: CubeType[] = ["Roland", "Digital", "Sing", "Laser", "Wood", "Reprint"];
+
 const AddPrintForm = ({ onClose, onSuccess, editMode = false, productData }: AddPrintFormProps) => {
   const [name, setName] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -39,11 +42,13 @@ const AddPrintForm = ({ onClose, onSuccess, editMode = false, productData }: Add
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [keepExistingImage, setKeepExistingImage] = useState(true);
+  const [type, setType] = useState<CubeType | "">("");
 
   // Initialize form with existing data in edit mode
   useEffect(() => {
     if (editMode && productData) {
       setName(productData.name);
+      setType(productData.type as CubeType);
       setPreviewUrl(productData.image_url);
       
       // Transform product menus to form format
@@ -219,7 +224,8 @@ const AddPrintForm = ({ onClose, onSuccess, editMode = false, productData }: Add
           .from('products')
           .update({ 
             name: name.trim(), 
-            image_url: imageUrl 
+            image_url: imageUrl,
+            type: type
           })
           .eq('id', productData.id);
 
@@ -279,7 +285,8 @@ const AddPrintForm = ({ onClose, onSuccess, editMode = false, productData }: Add
           .from('products')
           .insert([{ 
             name: name.trim(), 
-            image_url: imageUrl 
+            image_url: imageUrl ,
+            type: type
           }])
           .select('*')
           .single();
@@ -393,6 +400,7 @@ const AddPrintForm = ({ onClose, onSuccess, editMode = false, productData }: Add
               <label htmlFor="productName" className="block text-sm font-semibold text-gray-800">
                 Product Name *
               </label>
+              
               <input
                 id="productName"
                 type="text"
@@ -405,6 +413,26 @@ const AddPrintForm = ({ onClose, onSuccess, editMode = false, productData }: Add
                 disabled={loading}
               />
             </div>
+            <div className="space-y-2">
+  <label htmlFor="productType" className="block text-sm font-semibold text-gray-800">
+    Cube Type *
+  </label>
+  <select
+    id="productType"
+    value={type}
+    onChange={(e) => setType(e.target.value as CubeType)}
+    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 disabled:bg-gray-50 disabled:text-gray-500 transition-all duration-200"
+    required
+    disabled={loading}
+  >
+    <option value="">Select type</option>
+    {CUBE_TYPES.map((t) => (
+      <option key={t} value={t}>
+        {t}
+      </option>
+    ))}
+  </select>
+</div>
 
             <div className="space-y-2">
               <label htmlFor="productImage" className="block text-sm font-semibold text-gray-800">

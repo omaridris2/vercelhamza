@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-
+import ReactDOM from 'react-dom';
 type User = {
   id: string;
   name: string;
@@ -52,7 +52,34 @@ const DraggableCube = ({
 
   const handleContextMenu = (event: React.MouseEvent) => {
     event.preventDefault();
-    setMenuPosition({ x: event.clientX, y: event.clientY });
+    
+    // Calculate menu dimensions (approximate)
+    const menuWidth = 200;
+    const menuHeight = 300; // Approximate max height
+    
+    // Get viewport dimensions
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Calculate position, adjusting if menu would overflow
+    let x = event.clientX;
+    let y = event.clientY;
+    
+    // Flip horizontally if too close to right edge
+    if (x + menuWidth > viewportWidth) {
+      x = viewportWidth - menuWidth - 10;
+    }
+    
+    // Flip vertically if too close to bottom edge
+    if (y + menuHeight > viewportHeight) {
+      y = viewportHeight - menuHeight - 10;
+    }
+    
+    // Ensure menu doesn't go off-screen to the left or top
+    x = Math.max(10, x);
+    y = Math.max(10, y);
+    
+    setMenuPosition({ x, y });
   };
   
   const getColorClass = (type: string) => {
@@ -326,24 +353,25 @@ const DraggableCube = ({
         )}
       </div>
 
-      {menuPosition && (
-        <div
-          ref={menuRef}
-          style={{
-            position: 'fixed',
-            top: menuPosition.y,
-            left: menuPosition.x,
-            backgroundColor: 'white',
-            border: '1px solid #ccc',
-            borderRadius: '8px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-            zIndex: 9999,
-            padding: '8px 0',
-            minWidth: 200,
-          }}
-          onContextMenu={e => e.preventDefault()}
-        >
-          {/* View Order Details */}
+      {menuPosition &&
+  ReactDOM.createPortal(
+    <div
+      ref={menuRef}
+      style={{
+        position: 'absolute',
+        top: menuPosition.y + window.scrollY,
+        left: menuPosition.x + window.scrollX,
+        backgroundColor: 'white',
+        border: '1px solid #ccc',
+        borderRadius: '8px',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+        zIndex: 9999,
+        padding: '8px 0',
+        minWidth: 200,
+      }}
+      onContextMenu={e => e.preventDefault()}
+    >
+       {/* View Order Details */}
           {orderData && (
             <div
               className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
@@ -437,8 +465,10 @@ const DraggableCube = ({
           >
             🗑️ Delete
           </div>
-        </div>
-      )}
+    </div>,
+    document.body // 👈 render outside DnD container
+  )}
+
     </>
   );
 };
