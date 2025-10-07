@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { addToCart } from '@/app/actions/orderActions';
+import { supabase } from '@/lib/supabaseClient';
 
 type ProductMenuOption = {
   id: number;
@@ -22,6 +23,17 @@ type Product = {
   product_menus: ProductMenu[];
 };
 
+type DiscountCode = {
+  id: string;
+  code: string;
+  type: string;
+  amount: number;
+  expiration_date: string;
+  use_limit: number;
+  times_used: number;
+  is_active: boolean;
+};
+
 interface Props {
   product: Product;
 }
@@ -33,6 +45,12 @@ const ProductPageClient = ({ product }: Props) => {
 
   const [quantity, setQuantity] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Discount code states
+  const [discountCode, setDiscountCode] = useState<string>('');
+  const [appliedDiscount, setAppliedDiscount] = useState<DiscountCode | null>(null);
+  const [discountError, setDiscountError] = useState<string | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
 
   const handleSelect = (menuId: number, optionId: number) => {
     setSelectedOptions((prev) => ({
@@ -42,7 +60,7 @@ const ProductPageClient = ({ product }: Props) => {
   };
 
   const handleQuantityChange = (value: number) => {
-    if (value < 1) return; // prevent 0 or negative
+    if (value < 1) return;
     setQuantity(value);
   };
 
@@ -57,27 +75,105 @@ const ProductPageClient = ({ product }: Props) => {
     }, 0);
   }, [selectedOptions, product]);
 
-  const totalPrice = useMemo(() => basePrice * quantity, [basePrice, quantity]);
+  const discountAmount = useMemo(() => {
+    if (!appliedDiscount) return 0;
+    
+    const subtotal = basePrice * quantity;
+    
+    if (appliedDiscount.type === 'Percentage') {
+      return (subtotal * appliedDiscount.amount) / 100;
+    } else {
+      // Fixed discount
+      return appliedDiscount.amount;
+    }
+  }, [appliedDiscount, basePrice, quantity]);
+
+  const totalPrice = useMemo(() => {
+    const subtotal = basePrice * quantity;
+    return Math.max(0, subtotal - discountAmount);
+  }, [basePrice, quantity, discountAmount]);
 
   const allOptionsSelected = useMemo(() => {
     return product.product_menus.every((menu) => selectedOptions[menu.id] !== null);
   }, [selectedOptions, product]);
+
+  const validateDiscountCode = async () => {
+    if (!discountCode.trim()) {
+      setDiscountError('Please enter a discount code');
+      return;
+    }
+
+    setIsValidating(true);
+    setDiscountError(null);
+
+    try {
+      const { data, error } = await supabase
+        .from('discount_codes')
+        .select('*')
+        .eq('code', discountCode.trim().toUpperCase())
+        .single();
+
+      if (error || !data) {
+        setDiscountError('Invalid discount code');
+        setAppliedDiscount(null);
+        return;
+      }
+
+      // Validate discount code
+      if (!data.is_active) {
+        setDiscountError('This discount code is no longer active');
+        setAppliedDiscount(null);
+        return;
+      }
+
+      if (new Date(data.expiration_date) < new Date()) {
+        setDiscountError('This discount code has expired');
+        setAppliedDiscount(null);
+        return;
+      }
+
+      if (data.times_used >= data.use_limit) {
+        setDiscountError('This discount code has reached its usage limit');
+        setAppliedDiscount(null);
+        return;
+      }
+
+      // Success - apply discount
+      setAppliedDiscount(data);
+      setDiscountError(null);
+    } catch (err) {
+      console.error('Error validating discount code:', err);
+      setDiscountError('Failed to validate discount code');
+      setAppliedDiscount(null);
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  const removeDiscount = () => {
+    setAppliedDiscount(null);
+    setDiscountCode('');
+    setDiscountError(null);
+  };
 
   const handleAddToCart = async () => {
     if (!allOptionsSelected) return;
 
     setIsSubmitting(true);
     try {
-      // Get selected option IDs
       const selectedOptionIds = Object.values(selectedOptions).filter(
         (id): id is number => id !== null
       );
+
+      // If discount is applied, increment the times_used
+      
 
       const result = await addToCart({
         product_id: product.id,
         quantity,
         price: totalPrice,
         selected_option_ids: selectedOptionIds,
+        discount_code_id: appliedDiscount?.id,
       });
 
       if (result.success) {
@@ -88,6 +184,9 @@ const ProductPageClient = ({ product }: Props) => {
           Object.fromEntries(product.product_menus.map((menu) => [menu.id, null]))
         );
         setQuantity(1);
+        setAppliedDiscount(null);
+        setDiscountCode('');
+        setDiscountError(null);
       } else {
         alert(result.error || 'Failed to add to cart. Please try again.');
       }
@@ -99,7 +198,6 @@ const ProductPageClient = ({ product }: Props) => {
     }
   };
 
-  // Determine grid columns based on number of menus
   const getGridClass = () => {
     const count = product.product_menus.length;
     if (count <= 2) return 'grid-cols-1';
@@ -111,7 +209,6 @@ const ProductPageClient = ({ product }: Props) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        {/* Product Section with Image + Config */}
         <div className="bg-white rounded-2xl shadow-xl p-6 md:p-10">
           <div className="flex flex-col md:flex-row gap-10">
             
@@ -193,8 +290,93 @@ const ProductPageClient = ({ product }: Props) => {
                 })}
               </div>
 
+              {/* Discount Code Section */}
+              <div className="mb-8 p-4 bg-slate-50 rounded-lg border-2 border-slate-200">
+                <h3 className="text-lg font-semibold text-slate-900 mb-3">
+                  Have a discount code?
+                </h3>
+                
+                {!appliedDiscount ? (
+                  <div className="flex gap-3">
+                    <input
+                      type="text"
+                      value={discountCode}
+                      onChange={(e) => {
+                        setDiscountCode(e.target.value.toUpperCase());
+                        setDiscountError(null);
+                      }}
+                      placeholder="Enter code"
+                      className="flex-1 px-4 py-2 border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      disabled={isValidating}
+                    />
+                    <button
+                      onClick={validateDiscountCode}
+                      disabled={isValidating || !discountCode.trim()}
+                      className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
+                        isValidating || !discountCode.trim()
+                          ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                          : 'bg-blue-500 text-white hover:bg-blue-600'
+                      }`}
+                    >
+                      {isValidating ? 'Validating...' : 'Apply'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between bg-green-50 border-2 border-green-500 rounded-lg p-3">
+                    <div className="flex items-center gap-3">
+                      <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      <div>
+                        <p className="font-semibold text-green-900">
+                          Code Applied: {appliedDiscount.code}
+                        </p>
+                        <p className="text-sm text-green-700">
+                          {appliedDiscount.type === 'Percentage' 
+                            ? `${appliedDiscount.amount}% off` 
+                            : `$${appliedDiscount.amount.toFixed(2)} off`}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={removeDiscount}
+                      className="text-red-600 hover:text-red-800 font-semibold"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+
+                {discountError && (
+                  <p className="mt-2 text-sm text-red-600 flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                    {discountError}
+                  </p>
+                )}
+              </div>
+
               {/* Summary Bar */}
               <div className="border-t-2 border-slate-200 pt-8">
+                {/* Price Breakdown */}
+                <div className="mb-6 space-y-2">
+                  <div className="flex justify-between text-slate-700">
+                    <span>Subtotal:</span>
+                    <span className="font-semibold">${(basePrice * quantity).toFixed(2)}</span>
+                  </div>
+                  {appliedDiscount && (
+                    <div className="flex justify-between text-green-600">
+                      <span>Discount ({appliedDiscount.code}):</span>
+                      <span className="font-semibold">-${discountAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-xl font-bold text-slate-900 pt-2 border-t">
+                    <span>Total:</span>
+                    <span>${totalPrice.toFixed(2)}</span>
+                  </div>
+                </div>
+
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
                   
                   {/* Quantity Selector */}
@@ -221,16 +403,6 @@ const ProductPageClient = ({ product }: Props) => {
                         +
                       </button>
                     </div>
-                  </div>
-
-                  {/* Total Price */}
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg font-semibold text-slate-700">
-                      Total Price:
-                    </span>
-                    <span className="text-3xl font-bold text-slate-900">
-                      ${totalPrice.toFixed(2)}
-                    </span>
                   </div>
 
                   {/* Add to Cart Button */}

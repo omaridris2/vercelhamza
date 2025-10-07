@@ -2,7 +2,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 export async function POST(req: Request) {
   try {
-    const { email, password, name, role } = await req.json()
+    const { email, password, name, role,type } = await req.json()
 
     // Validation
     if (!email || !password || !name) {
@@ -33,7 +33,8 @@ export async function POST(req: Request) {
           id: user.id,  // must match auth.users.id
           name,
           email,       // Add the email field
-          role,        // store role/title
+          role, 
+          type,       // store role/title
         },
       ])
 

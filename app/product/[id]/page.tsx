@@ -56,6 +56,5 @@ export default async function ProductPage({ params }: PageProps) {
     return <div className="p-6 text-center">Product not found</div>;
   }
 
-  // ✅ Only render client component after product data is ready
   return <ProductPageClient product={product as Product} />;
 }

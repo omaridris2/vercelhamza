@@ -8,7 +8,43 @@ type AddToCartData = {
   quantity: number;
   price: number;
   selected_option_ids: number[];
+  discount_code_id?: string;
 };
+
+// Replace the existing discount code increment logic with this:
+async function incrementDiscountUsage(supabase: any, discountCodeId: string) {
+  try {
+    // Try RPC first
+    const { error: rpcError } = await supabase.rpc('increment_discount_usage', {
+      code_id: discountCodeId,
+    });
+
+    // If RPC doesn't exist, fall back to direct update
+    if (rpcError && rpcError.message?.includes('function')) {
+      const { data: current, error: fetchError } = await supabase
+        .from('discount_codes')
+        .select('times_used')
+        .eq('id', discountCodeId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const { error: updateError } = await supabase
+        .from('discount_codes')
+        .update({ times_used: (current?.times_used || 0) + 1 })
+        .eq('id', discountCodeId);
+
+      if (updateError) throw updateError;
+    } else if (rpcError) {
+      throw rpcError;
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to increment discount usage:', error);
+    throw error;
+  }
+}
 
 // 🧩 Add product to cart — automatically fetch product type
 export async function addToCart(data: AddToCartData) {
@@ -28,7 +64,11 @@ export async function addToCart(data: AddToCartData) {
       return { success: false, error: 'Failed to fetch product type.' };
     }
 
-    // Create order with product type
+    // If a discount code is provided, validate it first and lock it
+    let discountValidated = false;
+    
+
+    // Create order with product type and discount code
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
@@ -37,11 +77,22 @@ export async function addToCart(data: AddToCartData) {
         Quantity: data.quantity,
         price: data.price,
         type: product.type,
+        discount_code_id: data.discount_code_id || null,
       })
       .select('id')
       .single();
 
     if (orderError) throw orderError;
+
+    // ✅ Increment discount usage ONCE - only if order was created successfully
+    if (discountValidated && data.discount_code_id) {
+      try {
+        await incrementDiscountUsage(supabase, data.discount_code_id);
+      } catch (error) {
+        console.error('Failed to increment discount usage:', error);
+        // Don't fail the entire order if increment fails - log it
+      }
+    }
 
     // Create order item
     const { data: orderItem, error: orderItemError } = await supabase
@@ -90,6 +141,7 @@ export async function fetchOrders() {
         timeline_position,
         timeline_date,
         assigned_user_id,
+        discount_code_id,
         order_items (
           id,
           product_id,

@@ -8,7 +8,7 @@ import NewJobForm from '../components/NewJobForm';
 import NewCodeForm from '../components/NewCodeForm';
 import NewUserForm from '../components/NewUserForm';
 import AddPrintForm from '../components/NewPrintForm';
-
+import DiscountCodesTable from '../components/DiscountCodesTable';
 import  Timeline  from '../components/TimeLIne';
 
 import UserTable from '../components/UsersMenu';
@@ -31,12 +31,12 @@ type User = {
   createdAt: Date;
 };
 
-// Add this type to match your UserTable component
 type Profile = {
   id: string;
   name: string | null;
   email: string;
   role: string | null;
+  type: string | null;  // Add this line
   created_at: string;
 };
 
@@ -52,6 +52,13 @@ const AdminTimelinePage = () => {
   const TICKS = Array.from({ length: 24 });
   const [activeSection, setActiveSection] = useState<'dashboard' | 'printing-types' | 'discount-codes' | 'user-accounts' | 'settings'>('dashboard');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  
+  interface UserTableProps {
+  users: Profile[];
+  loading: boolean;
+  onDeleteUser: (userId: string) => Promise<void>;
+  onRefresh: () => Promise<void>; // New prop
+}
 
   // Add loading state for profiles
   const [profilesLoading, setProfilesLoading] = useState(true);
@@ -95,34 +102,34 @@ const AdminTimelinePage = () => {
   // Fetch profiles data on component mount
   useEffect(() => {
     const fetchProfiles = async () => {
-      setProfilesLoading(true);
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, name, email, role, created_at');
-      
-      if (error) {
-        console.error('⚠️ Error fetching users:', error);
-      } else {
-        setProfiles(data || []);
-      }
-      setProfilesLoading(false);
-    };
+  setProfilesLoading(true);
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, name, email, role, type, created_at');  // Add 'type' here
+  
+  if (error) {
+    console.error('⚠️ Error fetching users:', error);
+  } else {
+    setProfiles(data || []);
+  }
+  setProfilesLoading(false);
+};
 
     fetchProfiles();
   }, []);
 
   // Function to refresh profiles (call this when you add a new user)
   const refreshProfiles = async () => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, name, email, role, created_at');
-    
-    if (error) {
-      console.error('⚠️ Error fetching users:', error);
-    } else {
-      setProfiles(data || []);
-    }
-  };
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, name, email, role, type, created_at');  // Add 'type' here
+  
+  if (error) {
+    console.error('⚠️ Error fetching users:', error);
+  } else {
+    setProfiles(data || []);
+  }
+};
 
   // Add a new job cube
   const handleAddJob = () => {
@@ -167,25 +174,24 @@ const AdminTimelinePage = () => {
   };
 
   // Handle new discount code submission
-  const handleCodeSubmit = (newCode: { id: string; title: string; type: string; mode: string; expirationDate: number }) => {
-    const codeWithDate: DiscountCode = {
-      ...newCode,
-      createdAt: new Date()
-    };
-    setDiscountCodes(prev => [...prev, codeWithDate]);
-  };
+  
 
   // Handle new user submission - now also refresh profiles
-  const handleUserSubmit = async (newUser: { id: string; name: string; email: string; role: string }) => {
-    const userWithDate: User = {
-      ...newUser,
-      createdAt: new Date()
-    };
-    setUsers(prev => [...prev, userWithDate]);
-    
-    // Refresh profiles data after adding new user
-    await refreshProfiles();
+  const handleUserSubmit = async (newUser: { 
+  id: string; 
+  name: string; 
+  email: string; 
+  role: string;
+  type?: string | null;  // Add this line
+}) => {
+  const userWithDate: User = {
+    ...newUser,
+    createdAt: new Date()
   };
+  setUsers(prev => [...prev, userWithDate]);
+  
+  await refreshProfiles();
+};
 
   // Handle user assignment to cube
   const handleAssignUser = (cubeId: string, userId: string | null) => {
@@ -244,6 +250,30 @@ const AdminTimelinePage = () => {
   const handleSectionChange = (section: typeof activeSection) => {
     setActiveSection(section);
     setIsDrawerOpen(false);
+  };
+
+  // Add this function inside the AdminTimelinePage component
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      // Delete the user from Supabase
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
+
+      if (error) {
+        throw error;
+      }
+
+      // Update local state by removing the deleted user
+      setProfiles(prevProfiles => 
+        prevProfiles.filter(profile => profile.id !== userId)
+      );
+
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      throw error; // Re-throw to be handled by the UserTable component
+    }
   };
 
   return (
@@ -364,16 +394,23 @@ const AdminTimelinePage = () => {
 
         {/* DASHBOARD SECTION */}
         {activeSection === 'dashboard' && (
-          <div className="">
-           <div>
-            <Timeline 
-            users={users} 
-            assignedUsers={assignedUsers}
-            onAssignUser={handleAssignUser}
-             />
-          </div>
-          </div>
-        )}
+  <div className="">
+   <div>
+    <Timeline 
+  users={profiles.map(profile => ({
+    id: profile.id,
+    name: profile.name || '',
+    email: profile.email,
+    role: profile.role || 'user',
+    type: profile.type || null,  // Add this line
+    createdAt: new Date(profile.created_at)
+  }))}
+  assignedUsers={assignedUsers}
+  onAssignUser={handleAssignUser}
+/>
+  </div>
+  </div>
+)}
 
         {activeSection === 'printing-types' && (
           <div className=" rounded-2xl  p-12 ">
@@ -399,78 +436,20 @@ const AdminTimelinePage = () => {
 
         {/* DISCOUNT CODES SECTION */}
         {activeSection === 'discount-codes' && (
-          <div className="bg-white rounded-2xl shadow-xl p-12 border border-yellow-200">
+          <div className=" p-12 ">
             <div className='flex items-center justify-between mb-8'>
               <h2 className="text-2xl font-bold text-gray-900">Discount Codes</h2>
               <button onClick={handleAddCode} className="bg-[#636255] text-white px-20 py-2 rounded-lg hover:bg-yellow-500">Generate Code</button>
-            </div>
-
-            {/* Statistics */}
-            <div className="flex gap-8 mb-8">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-2xl font-bold text-gray-900">{discountCodes.length}</div>
-                <div className="text-sm text-gray-600">Total Codes</div>
-              </div>
               
             </div>
 
-            {/* Discount Codes Table */}
-            {discountCodes.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse border border-gray-300">
-                  <thead>
-                    <tr className="bg-gray-50">
-                      <th className="border border-gray-300 px-4 py-3 text-left font-semibold">Code</th>
-                      <th className="border border-gray-300 px-4 py-3 text-left font-semibold">Type</th>
-                      <th className="border border-gray-300 px-4 py-3 text-left font-semibold">Mode</th>
-                      <th className="border border-gray-300 px-4 py-3 text-left font-semibold">Expires At</th>
-                      <th className="border border-gray-300 px-4 py-3 text-left font-semibold">Created</th>
-                      <th className="border border-gray-300 px-4 py-3 text-left font-semibold">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {discountCodes.map((code) => (
-                      <tr key={code.id} className="hover:bg-gray-50">
-                        <td className="border border-gray-300 px-4 py-3 font-mono font-semibold">{code.title}</td>
-                        <td className="border border-gray-300 px-4 py-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            code.type === 'Fixed' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-blue-100 text-blue-800'
-                          }`}>
-                            {code.type}
-                          </span>
-                        </td>
-                        <td className="border border-gray-300 px-4 py-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            code.mode === 'Auto' 
-                              ? 'bg-purple-100 text-purple-800' 
-                              : 'bg-orange-100 text-orange-800'
-                          }`}>
-                            {code.mode}
-                          </span>
-                        </td>
-                        <td className="border border-gray-300 px-4 py-3">{formatExpirationTime(code.expirationDate)}</td>
-                        <td className="border border-gray-300 px-4 py-3 text-sm text-gray-600">{formatCreatedDate(code.createdAt)}</td>
-                        <td className="border border-gray-300 px-4 py-3">
-                          <button 
-                            onClick={() => deleteDiscountCode(code.id)}
-                            className="text-red-600 hover:text-red-800 text-sm font-medium"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-center py-12 text-gray-500">
-                <div className="text-lg">No discount codes created yet</div>
-                <div className="text-sm mt-2">Click &quot;Generate Code&quot; to create your first discount code</div>
-              </div>
-            )}
+            {/* Statistics */}
+            
+
+            {/* DiscountCodesTable */}
+            <DiscountCodesTable />
+
+           
           </div>
         )}
 
@@ -480,7 +459,12 @@ const AdminTimelinePage = () => {
               <h2 className="text-2xl font-bold text-gray-900">User Accounts</h2>
               <button onClick={handleAddUser} className="bg-[#636255] text-white px-20 py-2 rounded-lg hover:bg-yellow-500">Add User</button>
             </div>
-            <UserTable users={profiles} loading={profilesLoading} />
+            <UserTable 
+              users={profiles} 
+              loading={profilesLoading} 
+              onDeleteUser={handleDeleteUser}
+              onRefresh={refreshProfiles}
+            />
 
           </div>
         )}
@@ -501,11 +485,11 @@ const AdminTimelinePage = () => {
       )}
       
       {showCodeMenu && (
-        <NewCodeForm
-          onClose={() => setShowcodeMenu(false)}
-          onSubmit={handleCodeSubmit}
-        />
-      )}
+    <NewCodeForm
+      onClose={() => setShowcodeMenu(false)}
+    />
+    )}
+
 
       {showUserMenu && (
         <NewUserForm

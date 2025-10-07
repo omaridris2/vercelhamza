@@ -4,13 +4,20 @@ import React, { useState } from 'react';
 
 type NewUserFormProps = {
   onClose: () => void;
-  onSubmit: (user: { id: string; name: string; email: string; role: string }) => void;
+  onSubmit: (user: { 
+    id: string; 
+    name: string; 
+    email: string; 
+    role: string; 
+    type?: string | null 
+  }) => void;
 };
 
 const NewUserForm = ({ onClose, onSubmit }: NewUserFormProps) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('Designer');
+  const [type, setType] = useState('Roland');
   const [password, setPassword] = useState('');
 
   const handleSubmit = async () => {
@@ -20,13 +27,18 @@ const NewUserForm = ({ onClose, onSubmit }: NewUserFormProps) => {
       return;
     }
 
+    // Ensure type is required for Designer role
+    if (role === 'Designer' && !type) {
+      alert('Please select a type for Designer role');
+      return;
+    }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       alert('Please enter a valid email address');
       return;
     }
 
-    // Password validation
     if (password.length < 8) {
       alert('Password must be at least 8 characters long');
       return;
@@ -41,6 +53,8 @@ const NewUserForm = ({ onClose, onSubmit }: NewUserFormProps) => {
           password,
           name,
           role,
+          // Always send the type field for Designer role, null for other roles
+          type: role === 'Designer' ? type : null
         }),
       });
 
@@ -51,12 +65,14 @@ const NewUserForm = ({ onClose, onSubmit }: NewUserFormProps) => {
         return;
       }
 
-      // Call parent onSubmit with the new user info
+      // Include type in the onSubmit callback
       onSubmit({
-        id: data.user.id,
-        name,
-        email,
-        role,
+        id: data.user?.id ?? '',
+        name: data.user?.name ?? name,
+        email: data.user?.email ?? email,
+        role: data.user?.role ?? role,
+        // Always include type in the response
+        type: role === 'Designer' ? type : null
       });
 
       onClose();
@@ -114,7 +130,7 @@ const NewUserForm = ({ onClose, onSubmit }: NewUserFormProps) => {
             />
           </div>
 
-          {/* Title/Role */}
+          {/* Role Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Role
@@ -129,6 +145,27 @@ const NewUserForm = ({ onClose, onSubmit }: NewUserFormProps) => {
               <option value="Admin">Admin</option>
             </select>
           </div>
+
+          {/* Type Selection - Only shown for Designer role */}
+          {role === 'Designer' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Type
+              </label>
+              <select
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+              >
+                <option value="Roland">Roland</option>
+                <option value="Digital">Digital</option>
+                <option value="Sign">Sign</option>
+                <option value="Laser">Laser</option>
+                <option value="Wood">Wood</option>
+                <option value="Reprint">Reprint</option>
+              </select>
+            </div>
+          )}
 
           {/* Buttons */}
           <div className="flex justify-end gap-4 mt-6">

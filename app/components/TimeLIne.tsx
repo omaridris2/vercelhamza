@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react' // Added useCallback
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { DndContext, closestCorners, DragEndEvent } from '@dnd-kit/core';
 import DraggableCube from './DraggableCube';
 import DroppableTick from './DroppableTick';
@@ -10,6 +10,7 @@ type User = {
   name: string;
   email: string;
   role: string;
+  type?: string | null;  // Add type field
   createdAt: Date;
 };
 
@@ -27,13 +28,18 @@ const CUBE_TYPES: CubeType[] = ["Roland", "Digital", "Sing", "Laser", "Wood", "R
 const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
   const [activeTab, setActiveTab] = useState<'task creation' | 'user management' | 'task tracking'>('task creation');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const designerScrollRef = useRef<HTMLDivElement>(null);
   
   const [activeFilters, setActiveFilters] = useState<CubeType[]>([]);
   const [showAllTypes, setShowAllTypes] = useState(true);
   
+  // User filtering state
+  const [activeUserFilters, setActiveUserFilters] = useState<string[]>([]);
+  const [showAllUsers, setShowAllUsers] = useState(true);
+  
   // Date navigation state
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false); // Kept for the custom dropdown functionality
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -42,6 +48,17 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
         scrollRef.current.scrollBy({ left: -scrollAmount, behavior: "smooth" });
       } else {
         scrollRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+      }
+    }
+  };
+
+  const scrollDesigners = (direction: "left" | "right") => {
+    if (designerScrollRef.current) {
+      const scrollAmount = 300;
+      if (direction === "left") {
+        designerScrollRef.current.scrollBy({ left: -scrollAmount, behavior: "smooth" });
+      } else {
+        designerScrollRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
       }
     }
   };
@@ -58,7 +75,7 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
     completed: boolean;
     assignedUserId?: string | null;
     orderData?: any;
-    timelineDate?: string | null; // Added to match loadOrders logic
+    timelineDate?: string | null;
   }[]>([]);
 
   const [assignedUsers, setAssignedUsers] = useState<{[key: string]: string | null}>({});
@@ -70,7 +87,6 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
   }, []);
 
   const formatDateForInput = useCallback((date: Date) => {
-    // Ensures the format is YYYY-MM-DD for the native input
     return date.toISOString().split('T')[0];
   }, []);
 
@@ -88,12 +104,10 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
     const today = new Date();
     return date.toDateString() === today.toDateString();
   }, []);
-  // End Helper functions
 
   const loadOrders = useCallback(async () => {
     console.log('Loading orders for date:', formatDateForDB(selectedDate));
 
-    // Fetch ALL orders (not just for selected date)
     const result = await fetchOrders();
 
     if (result.success && result.orders && result.orders.length > 0) {
@@ -110,21 +124,19 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
           type: order.type || 'Roland',
           completed: order.status === 'completed',
           assignedUserId: order.assigned_user_id,
-          timelineDate: order.timeline_date || null, // ✅ track which date it's placed on
+          timelineDate: order.timeline_date || null,
           orderData: order,
         };
       });
 
-      // ✅ Filter logic: show unplaced + today's placed tasks
       const visibleCubes = allOrderCubes.filter(
         (cube: any) =>
-          cube.tickId === null || // Always keep unplaced
-          cube.timelineDate === formatDateForDB(selectedDate) // Show placed for current date
+          cube.tickId === null ||
+          cube.timelineDate === formatDateForDB(selectedDate)
       );
 
       setCubes(visibleCubes);
 
-      // Assign users
       const assignments: { [key: string]: string | null } = {};
       visibleCubes.forEach((cube: any) => {
         if (cube.assignedUserId) {
@@ -136,9 +148,8 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
       setCubes([]);
       setAssignedUsers({});
     }
-  }, [formatDateForDB, selectedDate]); // Dependencies for useCallback
+  }, [formatDateForDB, selectedDate]);
 
-  // Fetch orders when component mounts or date changes
   useEffect(() => {
     loadOrders();
   }, [selectedDate, loadOrders]);
@@ -163,16 +174,12 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
   };
 
   const handleDateSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // The native date input value is 'YYYY-MM-DD'.
-    // We append 'T00:00:00' to ensure the date is parsed consistently as the start of the day in the local timezone.
     const newDate = new Date(e.target.value + 'T00:00:00');
     if (!isNaN(newDate.getTime())) {
       setSelectedDate(newDate);
     }
-    // No longer closing the picker on select, as the input element handles it internally when focus is lost.
     setIsDatePickerOpen(false); 
   };
-
 
   const toggleFilter = (type: CubeType) => {
     setActiveFilters(prev => {
@@ -197,11 +204,58 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
     setShowAllTypes(true);
   };
 
+  // User filter handlers
+  const toggleUserFilter = (userId: string) => {
+    setActiveUserFilters(prev => {
+      if (prev.includes(userId)) {
+        const newFilters = prev.filter(id => id !== userId);
+        setShowAllUsers(newFilters.length === 0);
+        return newFilters;
+      } else {
+        setShowAllUsers(false);
+        return [...prev, userId];
+      }
+    });
+  };
+
+  const showAllUsersHandler = () => {
+    setActiveUserFilters([]);
+    setShowAllUsers(true);
+  };
+
+  // Get designers only
+  const designers = users.filter(user => user.role.toLowerCase() === 'designer');
+
   const getFilteredCubes = () => {
-    if (showAllTypes || activeFilters.length === 0) {
-      return cubes;
+    let filtered = cubes;
+    
+    // Apply type filters
+    if (!showAllTypes && activeFilters.length > 0) {
+      filtered = filtered.filter(cube => activeFilters.includes(cube.type as CubeType));
     }
-    return cubes.filter(cube => activeFilters.includes(cube.type as CubeType));
+    
+    // Apply user filters
+    if (!showAllUsers && activeUserFilters.length > 0) {
+      filtered = filtered.filter(cube => 
+        cube.assignedUserId && activeUserFilters.includes(cube.assignedUserId)
+      );
+    }
+    
+    return filtered;
+  };
+
+  const getFilteredDesigners = () => {
+    // Start with all designers
+    let filtered = designers;
+    
+    // If type filters are active, only show designers of those types
+    if (!showAllTypes && activeFilters.length > 0) {
+      filtered = filtered.filter(designer => 
+        designer.type && activeFilters.includes(designer.type as CubeType)
+      );
+    }
+    
+    return filtered;
   };
 
   const getTypeColor = (type: string) => {
@@ -217,20 +271,17 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
   };
 
   const handleComplete = async (id: string) => {
-    // Update local state
     setCubes(prev =>
       prev.map(cube =>
         cube.id === id ? { ...cube, completed: true } : cube
       )
     );
     
-    // Update database
     await updateOrderStatus(id, 'completed');
   };
 
   const deleteCube = (id: string) => {
     setCubes(prev => prev.filter(cube => cube.id !== id));
-    // Note: You might want to add a soft delete in the database instead
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -239,7 +290,6 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
     if (over) {
       const newTickId = over.id.toString();
       
-      // Update local state
       setCubes(prev =>
         prev.map(cube =>
           cube.id === active.id
@@ -248,7 +298,6 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
         )
       );
       
-      // Update database
       await updateOrderPosition(
         active.id.toString(), 
         newTickId, 
@@ -258,13 +307,11 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
   };
 
   const handleAssignUser = async (cubeId: string, userId: string | null) => {
-    // Update local state
     setAssignedUsers(prev => ({
       ...prev,
       [cubeId]: userId
     }));
     
-    // Update database
     await assignOrderToUser(cubeId, userId);
   };
 
@@ -298,7 +345,6 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
 
     const availableTick = tickCounts.sort((a, b) => a.count - b.count)[0];
 
-    // Update local state
     setCubes(prev =>
       prev.map(cube =>
         cube.id === cubeId
@@ -307,7 +353,6 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
       )
     );
     
-    // Update database
     await updateOrderPosition(
       cubeId, 
       availableTick.tickId, 
@@ -317,9 +362,6 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
 
   const filteredCubes = getFilteredCubes();
 
-  // ----------------------------------------------------------------------
-  // 🚀 IMPROVED DATE PICKER IMPLEMENTATION 🚀
-  // ----------------------------------------------------------------------
   const BetterDatePicker = () => (
     <div className="relative">
       <button
@@ -333,7 +375,6 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
         <span>Pick Date</span>
       </button>
       
-      {/* The date input is now an actual dropdown, making it more visible and accessible */}
       {isDatePickerOpen && (
         <div className="absolute top-full mt-2 left-0 z-50">
           <input
@@ -342,7 +383,6 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
             onChange={handleDateSelect}
             className="p-3 border border-gray-300 rounded-lg shadow-xl bg-white focus:ring-2 focus:ring-[#636255] focus:border-transparent"
             onBlur={() => {
-              // Set a small delay to allow the handleDateSelect to fire before closing
               setTimeout(() => setIsDatePickerOpen(false), 100);
             }}
             autoFocus 
@@ -351,7 +391,6 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
       )}
     </div>
   );
-
 
   return (
     <div>
@@ -389,11 +428,9 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
             </svg>
           </button>
           
-          {/* Use the new component */}
           <BetterDatePicker />
         </div>
         
-        {/* Date Display (moved here for better separation from navigation) */}
         <div className="text-xl font-semibold text-gray-800">
           {formatDisplayDate(selectedDate)}
           {isToday(selectedDate) && (
@@ -482,38 +519,99 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
       {activeTab === 'task tracking' && (
         <div className="mb-6">
         
-        <div className="flex flex-wrap gap-5 ">
-          <button
-             onClick={showAllTypesHandler}
-             className={`px-4 py-2 rounded-lg border-2 font-medium transition-colors text-2xl ${
-               showAllTypes 
-                 ? 'bg-[#636255] text-white border-[#636255]'
-                 : 'bg-white text-[#636255] border-[#636255] hover:bg-gray-50'
-             }`}
-           >
-            All Types 
-          </button>
-          
-          {CUBE_TYPES.map(type => {
-            const typeCount = cubes.filter(c => c.type === type).length;
-            const isActive = activeFilters.includes(type);
+        {/* Task Type Filters */}
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold text-gray-700 mb-3">Filter by Task Type</h3>
+          <div className="flex flex-wrap gap-5">
+            <button
+               onClick={showAllTypesHandler}
+               className={`px-4 py-2 rounded-lg border-2 font-medium transition-colors text-2xl ${
+                 showAllTypes 
+                   ? 'bg-[#636255] text-white border-[#636255]'
+                   : 'bg-white text-[#636255] border-[#636255] hover:bg-gray-50'
+               }`}
+             >
+              All Types 
+            </button>
             
-            return (
-              <button
-                key={type}
-                onClick={() => toggleFilter(type)}
-                className={`px-12 py-3.5 rounded-lg border-2 font-medium transition-colors text-2xl ${
-                  isActive
-                    ? `${getTypeColor(type)} border-current`
-                    : 'bg-white text-[#636255] border-[#636255] border-2 hover:bg-gray-50'
-                }`}
-              >
-                {type} 
-              </button>
-            );
-          })}
+            {CUBE_TYPES.map(type => {
+              const isActive = activeFilters.includes(type);
+              
+              return (
+                <button
+                  key={type}
+                  onClick={() => toggleFilter(type)}
+                  className={`px-12 py-3.5 rounded-lg border-2 font-medium transition-colors text-2xl ${
+                    isActive
+                      ? `${getTypeColor(type)} border-current`
+                      : 'bg-white text-[#636255] border-[#636255] border-2 hover:bg-gray-50'
+                  }`}
+                >
+                  {type} 
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+
+        {/* Designer Filters */}
+        {designers.length > 0 && (
+          <div>
+            <h3 className="text-lg font-semibold text-gray-700 mb-3">Filter by Designer</h3>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => scrollDesigners("left")}
+                className="p-2 bg-gray-200 rounded hover:bg-gray-300 flex-shrink-0"
+              >
+                &#8592;
+              </button>
+              
+              <div 
+                ref={designerScrollRef}
+                className="flex gap-5 overflow-x-auto scrollbar-hide flex-1"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              >
+                <button
+                  onClick={showAllUsersHandler}
+                  className={`px-4 py-2 rounded-lg border-2 font-medium transition-colors text-2xl flex-shrink-0 ${
+                    showAllUsers 
+                      ? 'bg-[#636255] text-white border-[#636255]'
+                      : 'bg-white text-[#636255] border-[#636255] hover:bg-gray-50'
+                  }`}
+                >
+                  All Designers
+                </button>
+                
+                {getFilteredDesigners().map(designer => {
+                  const isActive = activeUserFilters.includes(designer.id);
+                  
+                  return (
+                    <button
+                      key={designer.id}
+                      onClick={() => toggleUserFilter(designer.id)}
+                      className={`px-12 py-3.5 rounded-lg border-2 font-medium transition-colors text-2xl flex-shrink-0 ${
+                        isActive
+                          ? 'bg-[#636255] text-white border-[#636255]'
+                          : 'bg-white text-[#636255] border-[#636255] hover:bg-gray-50'
+                      }`}
+                    >
+                      {designer.name}
+                      
+                    </button>
+                  );
+                })}
+              </div>
+              
+              <button
+                onClick={() => scrollDesigners("right")}
+                className="p-2 bg-gray-200 rounded hover:bg-gray-300 flex-shrink-0"
+              >
+                &#8594;
+              </button>
+            </div>
+          </div>
+        )}
+        </div>
       )}
       
       <div className='flex gap-20 mb-4'>
