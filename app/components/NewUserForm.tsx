@@ -17,7 +17,7 @@ const NewUserForm = ({ onClose, onSubmit }: NewUserFormProps) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('Designer');
-  const [type, setType] = useState('Roland');
+  const [type, setType] = useState('');
   const [password, setPassword] = useState('');
 
   const handleSubmit = async () => {
@@ -28,7 +28,7 @@ const NewUserForm = ({ onClose, onSubmit }: NewUserFormProps) => {
     }
 
     // Ensure type is required for Designer role
-    if (role === 'Designer' && !type) {
+    if (role === 'Operator' && !type) {
       alert('Please select a type for Designer role');
       return;
     }
@@ -53,8 +53,7 @@ const NewUserForm = ({ onClose, onSubmit }: NewUserFormProps) => {
           password,
           name,
           role,
-          // Always send the type field for Designer role, null for other roles
-          type: role === 'Designer' ? type : null
+          type: role === 'Operator' ? type : null
         }),
       });
 
@@ -72,7 +71,7 @@ const NewUserForm = ({ onClose, onSubmit }: NewUserFormProps) => {
         email: data.user?.email ?? email,
         role: data.user?.role ?? role,
         // Always include type in the response
-        type: role === 'Designer' ? type : null
+        type: role === 'Operator' ? type : null
       });
 
       onClose();
@@ -141,13 +140,13 @@ const NewUserForm = ({ onClose, onSubmit }: NewUserFormProps) => {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
             >
               <option value="Designer">Designer</option>
-              <option value="Manager">Manager</option>
+              <option value="Operator">Operator</option>
               <option value="Admin">Admin</option>
             </select>
           </div>
 
-          {/* Type Selection - Only shown for Designer role */}
-          {role === 'Designer' && (
+          
+          {role === 'Operator' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Type

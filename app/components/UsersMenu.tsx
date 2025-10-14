@@ -105,8 +105,11 @@ const UserTable: React.FC<UserTableProps> = ({ users, loading, onDeleteUser, onR
   }
 
   const totalUsers = users.length;
-  const totalAdmins = users.filter(u => u.role === 'admin').length;
-  const totalRegular = users.filter(u => u.role !== 'admin').length;
+const totalAdmins = users.filter(u => u.role === 'Admin').length;
+const totalOperators = users.filter(u => u.role === 'Operator').length;
+
+const totalDesigners = users.filter(u => u.role === 'Designer').length;
+
 
   return (
     <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
@@ -118,7 +121,8 @@ const UserTable: React.FC<UserTableProps> = ({ users, loading, onDeleteUser, onR
           <div className="flex gap-4 text-sm text-gray-700">
             <div>Total: <span className="font-semibold text-gray-900">{totalUsers}</span></div>
             <div>Admins: <span className="font-semibold text-purple-600">{totalAdmins}</span></div>
-            <div>Regular: <span className="font-semibold text-blue-600">{totalRegular}</span></div>
+            <div>Operators: <span className="font-semibold text-blue-600">{totalOperators}</span></div>
+            <div>Designers: <span className="font-semibold text-blue-600">{totalDesigners}</span></div>
           </div>
         </div>
 
@@ -176,7 +180,7 @@ const UserTable: React.FC<UserTableProps> = ({ users, loading, onDeleteUser, onR
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  {user.role === 'Designer' && (
+                  {user.role === 'Operator' && (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                       {user.type ?? '—'}
                     </span>
