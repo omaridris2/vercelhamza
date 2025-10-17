@@ -10,7 +10,9 @@ const NewJobForm = ({ userId }: NewJobFormProps) => {
   const [orderno, setOrderno] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [type, setType] = useState('Roland');
-  const [deadline, setDeadline] = useState(0);
+  const [deadline, setDeadline] = useState<string >('');
+
+  const [deadlineHour, setDeadlineHour] = useState('0');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -35,7 +37,7 @@ const NewJobForm = ({ userId }: NewJobFormProps) => {
         setOrderno('');
         setCustomerName('');
         setType('Roland');
-        setDeadline(0);
+        setDeadline('');
       } else {
         setMessage(result.error || 'Failed to create order.');
       }
@@ -74,19 +76,15 @@ const NewJobForm = ({ userId }: NewJobFormProps) => {
           
                     
           <div>
-            <label className="block text-lg font-medium mb-2"></label>
-            <select
-              value={deadline}
-              onChange={(e) => setDeadline(Number(e.target.value))}
-              className="w-full px-6 py-4 border-2 border-black rounded-lg text-lg min-w-[250px]"
-            >
-              {Array.from({ length: 24 }, (_, i) => (
-                <option key={i} value={i}>
-                  {i.toString().padStart(2, '0')}:00
-                </option>
-              ))}
-            </select>
-          </div>
+  <label className="block text-lg font-medium mb-2"></label>
+  <input
+    type="datetime-local"
+    value={deadline}
+    onChange={(e) => setDeadline(e.target.value)}
+    min={new Date().toISOString().slice(0,16)}
+    className="w-full px-6 py-4 border-2 border-black rounded-lg text-lg min-w-[250px]"
+  />
+</div>
 
           
 

@@ -24,6 +24,7 @@ interface DraggableCubeProps {
   onAssignUser: (cubeId: string, userId: string | null) => void;
   creatorUser: User | null; 
   assignedUser: User | null;
+  
   isDragging?: boolean;
   isReadOnly?: boolean; 
   orderData?: any;
@@ -42,6 +43,7 @@ const DraggableCube = ({
   onComplete, 
   onAssignUser,
   isDragging,
+  
   isReadOnly,
   orderData
 }: DraggableCubeProps) => {
@@ -87,19 +89,25 @@ const DraggableCube = ({
     setMenuPosition({ x, y });
   };
   
-  const getColorClass = (type: string) => {
-    if (completed) {
-      return 'from-green-500 to-green-600 border-green-400';
-    }
-    switch (type) {
-      case 'urgent':
-        return 'from-red-500 to-red-600 border-red-400';
-      case 'low-priority':
-        return 'from-gray-400 to-gray-500 border-gray-300';
-      default:
-        return 'from-yellow-400 to-yellow-500 border-yellow-300';
-    }
-  };
+ const getColorClass = (type: string) => {
+  // Check if deadline has passed
+  if (orderData?.deadline && new Date(orderData.deadline) < new Date() && !completed) {
+    return 'from-red-500 to-red-600 border-red-600';
+  }
+
+  if (completed) {
+    return 'from-green-500 to-green-600 border-green-400';
+  }
+  switch (type) {
+    case 'urgent':
+      return 'from-red-500 to-red-600 border-red-400';
+    case 'low-priority':
+      return 'from-gray-400 to-gray-500 border-gray-300';
+    default:
+      return 'from-yellow-400 to-yellow-500 border-yellow-300';
+  }
+};
+
 
   const getUserInitials = (name: string | null) => {
     if (!name) return 'U';
@@ -213,10 +221,20 @@ const DraggableCube = ({
                   <span className="text-sm text-gray-600">Total Price</span>
                   <p className="font-bold text-xl text-green-600">${Number(orderData.price).toFixed(2)}</p>
                 </div>
+                {orderData.deadline && (
+  <div>
+    <span className="text-sm text-gray-600">Deadline</span>
+    <p className="font-medium text-red-600">
+      {new Date(orderData.deadline).toLocaleString()}
+    </p>
+  </div>
+)}
                 <div>
                   <span className="text-sm text-gray-600">Order Date</span>
                   <p className="font-medium text-gray-900">{new Date(orderData.created_at).toLocaleDateString()}</p>
                 </div>
+                
+                
                 {orderData.updated_at && (
                   <div>
                     <span className="text-sm text-gray-600">Last Updated</span>

@@ -65,6 +65,7 @@ const ProductPageClient = ({ product }: Props) => {
   const [appliedDiscount, setAppliedDiscount] = useState<DiscountCode | null>(null);
   const [discountError, setDiscountError] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
+  const [orderNo, setOrderNo] = useState<number | ''>('');
 
   const handleSelect = (menuId: number, optionId: number) => {
     setSelectedOptions((prev) => ({
@@ -186,6 +187,7 @@ const ProductPageClient = ({ product }: Props) => {
       price: totalPrice,
       selected_option_ids: selectedOptionIds,
       discount_code_id: appliedDiscount?.id,
+      order_no: orderNo ? Number(orderNo): undefined,
     });
 
     if (result.success) {
@@ -414,6 +416,16 @@ const ProductPageClient = ({ product }: Props) => {
                       </button>
                     </div>
                   </div>
+                  <div className="flex items-center gap-3">
+    <label className="text-lg font-semibold text-slate-700">Order Number</label>
+    <input
+      type="number"
+      value={orderNo}
+      onChange={(e) => setOrderNo(Number(e.target.value) || '')}
+      
+      className="w-40 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+    />
+  </div>
 
                   {/* Add to Cart Button */}
                   <button

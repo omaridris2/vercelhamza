@@ -358,17 +358,8 @@ const AdminTimelinePage = () => {
         <div className="text-sm opacity-80">Manage user profiles</div>
       </button>
 
-      <button
-        onClick={() => handleSectionChange('settings')}
-        className={`w-full text-left p-4 rounded-lg transition-all duration-200 ${
-          activeSection === 'settings' 
-            ? 'bg-[#636255] text-white shadow-lg' 
-            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-        }`}
-      >
-        <div className="font-semibold">Settings</div>
-        <div className="text-sm opacity-80">System configuration</div>
-      </button>
+      
+       
     </div>
   </div>
 </div>
@@ -460,12 +451,7 @@ const AdminTimelinePage = () => {
           </div>
         )}
 
-        {activeSection === 'settings' && (
-          <div className="bg-white rounded-2xl shadow-xl p-12 border border-yellow-200">
-            <h2 className="text-2xl font-bold text-gray-900 mb-10">Settings</h2>
-            <div className="text-lg text-gray-600">System settings coming soon...</div>
-          </div>
-        )}
+     
       </div>
 
       {showMenu && (

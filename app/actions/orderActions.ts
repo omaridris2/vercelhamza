@@ -6,12 +6,13 @@ import { createClient } from '@/lib/server';
 type AddToCartData = {
   product_id: number;
   quantity: number;
-  user_id?: string; // optional, will use temp user if not provided
+  user_id?: string;
   price: number;
   selected_option_ids: number[];
   discount_code_id?: string;
   customer_name?: string;
   order_no?: number;
+  deadline?: string; // Add deadline field
 };
 
 // Replace the existing discount code increment logic with this:
@@ -67,24 +68,24 @@ export async function addToCart(data: AddToCartData) {
       return { success: false, error: 'Failed to fetch product type.' };
     }
 
-    // If a discount code is provided, validate it first and lock it
     let discountValidated = false;
 
-    // Create order with product type and discount code
+    // Create order with product type, discount code, and deadline
     const { data: order, error: orderError } = await supabase
-  .from('orders')
-  .insert({
-    user_id: data.user_id || '00000000-0000-0000-0000-000000000001', // fallback if not provided
-    status: 'pending',
-    Quantity: data.quantity,
-    price: data.price,
-    type: product.type,
-    discount_code_id: data.discount_code_id || null,
-    customer_name: data.customer_name || null,
-    order_no: data.order_no || null,
-  })
-  .select('id')
-  .single();
+      .from('orders')
+      .insert({
+        user_id: data.user_id || '00000000-0000-0000-0000-000000000001',
+        status: 'pending',
+        Quantity: data.quantity,
+        price: data.price,
+        type: product.type,
+        discount_code_id: data.discount_code_id || null,
+        customer_name: data.customer_name || null,
+        order_no: data.order_no || null,
+        deadline: data.deadline || null, // Add deadline to insert
+      })
+      .select('id')
+      .single();
 
     if (orderError) throw orderError;
 
@@ -94,7 +95,6 @@ export async function addToCart(data: AddToCartData) {
         await incrementDiscountUsage(supabase, data.discount_code_id);
       } catch (error) {
         console.error('Failed to increment discount usage:', error);
-        // Don't fail the entire order if increment fails - log it
       }
     }
 
@@ -130,6 +130,7 @@ export async function addToCart(data: AddToCartData) {
 }
 
 // 🧾 Fetch orders with their related data
+// 🧾 Fetch orders with their related data
 export async function fetchOrders() {
   try {
     const supabase = await createClient();
@@ -148,6 +149,7 @@ export async function fetchOrders() {
         discount_code_id,
         order_no,
         customer_name,
+        deadline,
         created_at,
         user_id,
         updated_at,
@@ -271,4 +273,11 @@ export async function assignOrderToUser(orderId: string, userId: string | null) 
     console.error('assignOrderToUser error:', error);
     return { success: false, error: error.message };
   }
+}
+
+export async function deleteOrder(orderId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from('orders').delete().eq('id', orderId);
+
+  if (error) throw error;
 }

@@ -3,7 +3,7 @@ import { DndContext, closestCorners, DragEndEvent } from '@dnd-kit/core';
 import DraggableCube from './DraggableCube';
 import DroppableTick from './DroppableTick';
 import NewJobForm from './NewJobForm';
-import { fetchOrders, updateOrderPosition, updateOrderStatus, assignOrderToUser } from '@/app/actions/orderActions';
+import { fetchOrders, updateOrderPosition, updateOrderStatus, assignOrderToUser,deleteOrder } from '@/app/actions/orderActions';
 
 type User = {
   id: string;
@@ -297,10 +297,19 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
     await updateOrderStatus(id, 'completed');
   };
 
-  const deleteCube = (id: string) => {
+  const deleteCube = async (id: string) => {
+  try {
+    // 1️⃣ Remove from backend (optional)
+    await deleteOrder(id); // implement in orderActions.ts or Supabase
     setCubes(prev => prev.filter(cube => cube.id !== id));
-  };
+   
+  }catch (error) {
+    console.error("Failed to delete order:", error);
+  }
+};
 
+
+  // 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { over, active } = event;
 
