@@ -3,26 +3,46 @@
 import React, { useState } from 'react';
 
 type NewJobFormProps = {
-  
-  onSubmit: (job: { id: string; orderno: string; title: string; size: string; type: string; tickId: string | null; deadline: number }) => void;
+  userId: string;
 };
 
-const NewJobForm = ({  onSubmit }: NewJobFormProps) => {
+const NewJobForm = ({ userId }: NewJobFormProps) => {
   const [orderno, setOrderno] = useState('');
-  const [title, setTitle] = useState('');
-  
-
-
-  const [size, setSize] = useState('small');
+  const [customerName, setCustomerName] = useState('');
   const [type, setType] = useState('Roland');
-  const [deadline, setDeadline] = useState(0); 
+  const [deadline, setDeadline] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
-  
-
-  const handleSubmit = () => {
-    const id = `cube-${Math.random().toString(36).substr(2, 9)}`;
-    onSubmit({ id,orderno, title, size, type,deadline, tickId: null });
-    
+  const handleSubmit = async () => {
+    setLoading(true);
+    setMessage(null);
+    try {
+      const res = await fetch('/api/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId,
+          orderno,
+          customer_name: customerName,
+          type,
+          deadline,
+        }),
+      });
+      const result = await res.json();
+      if (res.ok) {
+        setMessage('Order created successfully!');
+        setOrderno('');
+        setCustomerName('');
+        setType('Roland');
+        setDeadline(0);
+      } else {
+        setMessage(result.error || 'Failed to create order.');
+      }
+    } catch (err) {
+      setMessage('Network error.');
+    }
+    setLoading(false);
   };
 
   return (
@@ -35,8 +55,8 @@ const NewJobForm = ({  onSubmit }: NewJobFormProps) => {
             <label className="block text-lg font-medium mb-2"></label>
             <input
               type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
               className="w-full px-6 py-4 border-2 border-black rounded-lg text-lg min-w-[250px]"
               placeholder="Customer name"
             />
@@ -86,21 +106,32 @@ const NewJobForm = ({  onSubmit }: NewJobFormProps) => {
               <option value="Reprint">Reprint</option>
             </select>
           </div>
-           <button
-  onClick={handleSubmit}
-  className="w-20 h-15 mt-2  border-2 border-black rounded-lg text-lg hover:bg-gray-500 flex items-center justify-center "
->
-  <svg
-    className="w-6 h-6"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-  >
-    <path d="M12 2v20M2 12h20" />
-  </svg>
-</button>
+          {/* ...existing code... */}
+          <button
+            onClick={handleSubmit}
+            className="w-20 h-15 mt-2 border-2 border-black rounded-lg text-lg hover:bg-gray-500 flex items-center justify-center"
+            disabled={loading}
+          >
+            {loading ? (
+              <span className="text-lg">...</span>
+            ) : (
+              <svg
+                className="w-6 h-6"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              >
+                <path d="M12 2v20M2 12h20" />
+              </svg>
+            )}
+          </button>
+          {message && (
+            <div className="mt-4 text-center text-lg">
+              {message}
+            </div>
+          )}
 
           
 

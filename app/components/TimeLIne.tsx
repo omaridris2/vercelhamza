@@ -10,13 +10,14 @@ type User = {
   name: string;
   email: string;
   role: string;
-  type?: string | null;  // Add type field
+  type?: string | null;
   createdAt: Date;
 };
 
 interface UserTableProps {
   users: User[];
   assignedUsers: { [key: string]: string | null };
+  
   onAssignUser: (cubeId: string, userId: string | null) => void;
   loading?: boolean;
 }
@@ -69,13 +70,19 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
     id: string;
     tickId: string | null;
     title: string;
-    orderno: string;
+    orderno: number | string;
     size: string;
     type: string;
     completed: boolean;
     assignedUserId?: string | null;
     orderData?: any;
+    creatorUser:User | null
     timelineDate?: string | null;
+    customerName?: string | null;
+    orderNo?: number | null;
+    createdAt?: string;
+    updatedAt?: string | null;
+    completedAt?: string | null;
   }[]>([]);
 
   const [assignedUsers, setAssignedUsers] = useState<{[key: string]: string | null}>({});
@@ -115,17 +122,25 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
         const orderItem = order.order_items?.[0];
         const product = orderItem?.products;
 
+        console.log('Order creator data:', order.creator); // Debug log
+
         return {
           id: order.id.toString(),
           tickId: order.timeline_position || null,
           title: product?.name || 'Order',
-          orderno: order.id.toString(),
+          orderno: order.order_no || order.id,
           size: `Qty: ${order.Quantity || 1}`,
           type: order.type || 'Roland',
           completed: order.status === 'completed',
           assignedUserId: order.assigned_user_id,
           timelineDate: order.timeline_date || null,
           orderData: order,
+          creatorUser: order.creator || null, // Make sure this is from order.creator
+          customerName: order.customer_name,
+          orderNo: order.order_no,
+          createdAt: order.created_at,
+          updatedAt: order.updated_at,
+          completedAt: order.completed_at,
         };
       });
 
@@ -134,6 +149,8 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
           cube.tickId === null ||
           cube.timelineDate === formatDateForDB(selectedDate)
       );
+
+      console.log('Visible cubes:', visibleCubes); // Debug log
 
       setCubes(visibleCubes);
 
@@ -330,7 +347,8 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
     const newCube = {
       ...jobData,
       tickId: null,
-      completed: false
+      completed: false,
+      creatorUser: null
     };
     setCubes(prev => [...prev, newCube]);
     setShowMenu(false);
@@ -471,9 +489,9 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
       
       {activeTab === 'task creation' && (
        <div className="">
-        <NewJobForm
-         onSubmit={handleJobSubmit}
-         />
+  <NewJobForm
+   userId={users?.[0]?.id || ''}
+   />
          
         <div className="mb-8">
         <h3 className="text-lg font-semibold text-gray-700 ">Task Queue - Click To Drop</h3>
@@ -497,7 +515,7 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
                   <DraggableCube 
                     id={cube.id} 
                     title={cube.title} 
-                    orderno={cube.orderno}
+                    orderno={cube.orderno} 
                     type={cube.type} 
                     completed={cube.completed}
                     onDelete={deleteCube} 
@@ -505,6 +523,7 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
                     users={users} 
                     onAssignUser={handleAssignUser} 
                     assignedUser={users.find(u => u.id === assignedUsers[cube.id]) || null}
+                    creatorUser={cube.creatorUser}
                     orderData={cube.orderData}
                   />
                 </div>
@@ -658,9 +677,8 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
                         style={{ bottom: `${20 + (index * 160)}px` }}
                       >
                         <DraggableCube 
-                          key={cube.id} 
                           id={cube.id} 
-                          title={cube.title}
+                          title={cube.title} 
                           orderno={cube.orderno} 
                           type={cube.type} 
                           completed={cube.completed}
@@ -669,8 +687,10 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
                           users={users} 
                           onAssignUser={handleAssignUser} 
                           assignedUser={users.find(u => u.id === assignedUsers[cube.id]) || null}
+                          creatorUser={cube.creatorUser}
                           orderData={cube.orderData}
                         />
+                        
                       </div>
                     ))}
                   </DroppableTick>

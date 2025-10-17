@@ -236,16 +236,7 @@ const AdminTimelinePage = () => {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
   };
 
-  const getSectionTitle = () => {
-    switch (activeSection) {
-      case 'dashboard': return 'Dashboard';
-      case 'printing-types': return 'Printing Types';
-      case 'discount-codes': return 'Discount Codes';
-      case 'user-accounts': return 'User Accounts';
-      case 'settings': return 'Settings';
-      default: return 'Dashboard';
-    }
-  };
+ 
 
   const handleSectionChange = (section: typeof activeSection) => {
     setActiveSection(section);
@@ -478,10 +469,7 @@ const AdminTimelinePage = () => {
       </div>
 
       {showMenu && (
-        <NewJobForm
-          
-          onSubmit={handleJobSubmit}
-        />
+        <NewJobForm userId="some-id" />
       )}
       
       {showCodeMenu && (

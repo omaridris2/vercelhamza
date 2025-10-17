@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useEffect,useState, useMemo } from 'react';
 import { addToCart } from '@/app/actions/orderActions';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -42,6 +42,20 @@ const ProductPageClient = ({ product }: Props) => {
   const [selectedOptions, setSelectedOptions] = useState<Record<number, number | null>>(
     () => Object.fromEntries(product.product_menus.map((menu) => [menu.id, null]))
   );
+
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        setUserId(session.user.id);
+      } else {
+        alert('Please log in to place an order.');
+      }
+    };
+    fetchUser();
+  }, []);
 
   const [quantity, setQuantity] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -157,46 +171,42 @@ const ProductPageClient = ({ product }: Props) => {
   };
 
   const handleAddToCart = async () => {
-    if (!allOptionsSelected) return;
+  if (!allOptionsSelected || !userId) return;
 
-    setIsSubmitting(true);
-    try {
-      const selectedOptionIds = Object.values(selectedOptions).filter(
-        (id): id is number => id !== null
+  setIsSubmitting(true);
+  try {
+    const selectedOptionIds = Object.values(selectedOptions).filter(
+      (id): id is number => id !== null
+    );
+
+    const result = await addToCart({
+      user_id: userId,          // <-- pass the user ID here
+      product_id: product.id,
+      quantity,
+      price: totalPrice,
+      selected_option_ids: selectedOptionIds,
+      discount_code_id: appliedDiscount?.id,
+    });
+
+    if (result.success) {
+      alert(result.message || 'Added to cart successfully!');
+      setSelectedOptions(
+        Object.fromEntries(product.product_menus.map((menu) => [menu.id, null]))
       );
-
-      // If discount is applied, increment the times_used
-      
-
-      const result = await addToCart({
-        product_id: product.id,
-        quantity,
-        price: totalPrice,
-        selected_option_ids: selectedOptionIds,
-        discount_code_id: appliedDiscount?.id,
-      });
-
-      if (result.success) {
-        alert(result.message || 'Added to cart successfully!');
-        
-        // Reset selections
-        setSelectedOptions(
-          Object.fromEntries(product.product_menus.map((menu) => [menu.id, null]))
-        );
-        setQuantity(1);
-        setAppliedDiscount(null);
-        setDiscountCode('');
-        setDiscountError(null);
-      } else {
-        alert(result.error || 'Failed to add to cart. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-      alert('Failed to add to cart. Please try again.');
-    } finally {
-      setIsSubmitting(false);
+      setQuantity(1);
+      setAppliedDiscount(null);
+      setDiscountCode('');
+      setDiscountError(null);
+    } else {
+      alert(result.error || 'Failed to add to cart. Please try again.');
     }
-  };
+  } catch (error) {
+    console.error('Error adding to cart:', error);
+    alert('Failed to add to cart. Please try again.');
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const getGridClass = () => {
     const count = product.product_menus.length;
@@ -407,22 +417,16 @@ const ProductPageClient = ({ product }: Props) => {
 
                   {/* Add to Cart Button */}
                   <button
-                    onClick={handleAddToCart}
-                    disabled={!allOptionsSelected || isSubmitting}
-                    className={`px-8 py-4 rounded-xl font-bold text-lg transition-all duration-200 min-w-[200px] ${
-                      allOptionsSelected && !isSubmitting
-                        ? 'bg-[#636255] hover:bg-yellow-500 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
-                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                    }`}
-                  >
-                    {isSubmitting
-                      ? 'Adding...'
-                      : allOptionsSelected
-                      ? 'Add to Cart'
-                      : `Select ${
-                          product.product_menus.filter((m) => !selectedOptions[m.id]).length
-                        } More`}
-                  </button>
+  onClick={handleAddToCart}
+  disabled={!allOptionsSelected || isSubmitting || !userId}
+  className={`px-8 py-4 rounded-xl font-bold text-lg transition-all duration-200 min-w-[200px] ${
+    allOptionsSelected && !isSubmitting && userId
+      ? 'bg-[#636255] hover:bg-yellow-500 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
+      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+  }`}
+>
+  {isSubmitting ? 'Adding...' : !userId ? 'Login Required' : allOptionsSelected ? 'Add to Cart' : `Select ${product.product_menus.filter((m) => !selectedOptions[m.id]).length} More`}
+</button>
                 </div>
               </div>
             </div>

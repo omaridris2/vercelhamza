@@ -6,9 +6,12 @@ import { createClient } from '@/lib/server';
 type AddToCartData = {
   product_id: number;
   quantity: number;
+  user_id?: string; // optional, will use temp user if not provided
   price: number;
   selected_option_ids: number[];
   discount_code_id?: string;
+  customer_name?: string;
+  order_no?: number;
 };
 
 // Replace the existing discount code increment logic with this:
@@ -66,21 +69,22 @@ export async function addToCart(data: AddToCartData) {
 
     // If a discount code is provided, validate it first and lock it
     let discountValidated = false;
-    
 
     // Create order with product type and discount code
     const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        user_id: TEMP_USER_ID,
-        status: 'pending',
-        Quantity: data.quantity,
-        price: data.price,
-        type: product.type,
-        discount_code_id: data.discount_code_id || null,
-      })
-      .select('id')
-      .single();
+  .from('orders')
+  .insert({
+    user_id: data.user_id || '00000000-0000-0000-0000-000000000001', // fallback if not provided
+    status: 'pending',
+    Quantity: data.quantity,
+    price: data.price,
+    type: product.type,
+    discount_code_id: data.discount_code_id || null,
+    customer_name: data.customer_name || null,
+    order_no: data.order_no || null,
+  })
+  .select('id')
+  .single();
 
     if (orderError) throw orderError;
 
@@ -130,7 +134,7 @@ export async function fetchOrders() {
   try {
     const supabase = await createClient();
 
-    const { data, error } = await supabase
+    const { data: ordersData, error } = await supabase
       .from('orders')
       .select(`
         id,
@@ -142,6 +146,12 @@ export async function fetchOrders() {
         timeline_date,
         assigned_user_id,
         discount_code_id,
+        order_no,
+        customer_name,
+        created_at,
+        user_id,
+        updated_at,
+        completed_at,
         order_items (
           id,
           product_id,
@@ -155,7 +165,37 @@ export async function fetchOrders() {
 
     if (error) throw error;
 
-    return { success: true, orders: data };
+    // Fetch all unique user IDs from orders
+    const userIds = [...new Set(ordersData?.map(order => order.user_id).filter(Boolean))];
+    
+    // Fetch user details for all user_ids from profiles table
+    const { data: usersData, error: usersError } = await supabase
+      .from('profiles')
+      .select('id, name, email, role')
+      .in('id', userIds);
+
+    if (usersError) {
+      console.error('Error fetching users:', usersError);
+    }
+
+    // Create a map of user_id to user data
+    const usersMap = new Map(usersData?.map(user => [user.id, user]) || []);
+
+    // Attach creator data to each order
+    const ordersWithCreators = ordersData?.map(order => {
+      const creator = usersMap.get(order.user_id);
+      return {
+        ...order,
+        creator: creator ? {
+          id: creator.id,
+          name: creator.name,
+          email: creator.email,
+          role: creator.role
+        } : null
+      };
+    });
+
+    return { success: true, orders: ordersWithCreators };
   } catch (error: any) {
     console.error('fetchOrders error:', error);
     return { success: false, error: error.message || 'Failed to fetch orders' };
@@ -172,6 +212,7 @@ export async function updateOrderPosition(orderId: string, tickId: string, date:
       .update({
         timeline_position: tickId,
         timeline_date: date,
+        updated_at: new Date().toISOString(),
       })
       .eq('id', orderId);
 
@@ -188,9 +229,19 @@ export async function updateOrderStatus(orderId: string, status: string) {
   try {
     const supabase = await createClient();
 
+    const updateData: any = {
+      status,
+      updated_at: new Date().toISOString(),
+    };
+
+    // If status is completed, set completed_at timestamp
+    if (status === 'completed') {
+      updateData.completed_at = new Date().toISOString();
+    }
+
     const { error } = await supabase
       .from('orders')
-      .update({ status })
+      .update(updateData)
       .eq('id', orderId);
 
     if (error) throw error;
@@ -208,7 +259,10 @@ export async function assignOrderToUser(orderId: string, userId: string | null) 
 
     const { error } = await supabase
       .from('orders')
-      .update({ assigned_user_id: userId })
+      .update({
+        assigned_user_id: userId,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', orderId);
 
     if (error) throw error;
