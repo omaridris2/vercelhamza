@@ -15,7 +15,7 @@ type User = {
 interface DraggableCubeProps {
   id: string;
   title: string;
-  orderno: number | string;  // Updated to accept both number and string
+  orderno: number | string;
   type: string;
   completed: boolean;
   onDelete: (id: string) => void;
@@ -47,9 +47,10 @@ const DraggableCube = ({
   isReadOnly,
   orderData
 }: DraggableCubeProps) => {
+  // Disable dragging if completed OR isReadOnly
   const { attributes, listeners, setNodeRef, transform } = useDraggable({ 
     id,
-    disabled: completed
+    disabled: completed || isReadOnly
   });
 
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
@@ -373,14 +374,14 @@ const DraggableCube = ({
 
       <div
         ref={setNodeRef}
-        {...(completed ? {} : listeners)}
-        {...(completed ? {} : attributes)}
+        {...(completed || isReadOnly ? {} : listeners)}
+        {...(completed || isReadOnly ? {} : attributes)}
         onContextMenu={handleContextMenu}
         className={`w-40 h-40 rounded-2xl shadow-lg flex flex-col justify-center items-center text-white font-bold border-2 bg-[#636255]
-            border-gradient-to-br ${getColorClass(type)} ${completed ? 'cursor-default' : 'cursor-pointer'} relative
+            border-gradient-to-br ${getColorClass(type)} ${completed || isReadOnly ? 'cursor-default' : 'cursor-pointer'} relative
             ${isDragging ? 'opacity-100' : 'opacity-100'}`}
         style={{
-          transform: transform && !completed
+          transform: transform && !completed && !isReadOnly
             ? `translate(${transform.x}px, ${transform.y}px)`
             : undefined,
           userSelect: 'none',

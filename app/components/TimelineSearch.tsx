@@ -392,6 +392,30 @@ const TimelineSearch: React.FC<UserTableProps> = ({ users, loading }) => {
 
       {/* Timeline Section */}
       <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCorners}>
+        <div className="flex justify-between items-center mb-4">
+          <button
+            onClick={() => {
+              if (scrollRef.current) {
+                scrollRef.current.scrollBy({ left: -200, behavior: "smooth" });
+              }
+            }}
+            className="p-2 bg-gray-200 rounded hover:bg-gray-300 z-10"
+          >
+            &#8592;
+          </button>
+          
+          <button
+            onClick={() => {
+              if (scrollRef.current) {
+                scrollRef.current.scrollBy({ left: 200, behavior: "smooth" });
+              }
+            }}
+            className="p-2 bg-gray-200 rounded hover:bg-gray-300 z-10"
+          >
+            &#8594;
+          </button>
+        </div>
+
         <div
           ref={scrollRef}
           className="overflow-x-auto overflow-y-visible scrollbar-hide"
