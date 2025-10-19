@@ -69,16 +69,26 @@ export default function DesignerPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Hamburger Button */}
       <div className="mb-8 flex justify-between items-center"></div>
-      <div className="fixed top-6 left-6 z-40">
-        <button
-          onClick={() => setIsDrawerOpen(true)}
-          className="flex flex-row gap-1.5 p-3  duration-200  "
-        >
-          <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-          <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-          <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-        </button>
-      </div>
+      <div className="fixed top-6 left-0 right-0 flex justify-between items-center px-6 z-40">
+  {/* Three-dot button on the left */}
+  <button
+    onClick={() => setIsDrawerOpen(true)}
+    className="flex flex-row gap-1.5 p-3 duration-200"
+  >
+    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+  </button>
+
+  {/* Logo on the right */}
+  <img
+    src="/logo.svg"
+    alt="Logo"
+    width={100}
+    height={100}
+    className="object-contain"
+  />
+</div>
       
 
       {/* Overlay */}

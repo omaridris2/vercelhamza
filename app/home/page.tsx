@@ -12,9 +12,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en"  suppressHydrationWarning>
       <body>
         
-        <MyCarousel1 />
-        <MyCarousel1 />
-        <MyCarousel1 />
+        
         
         
         <main>{children}</main>
