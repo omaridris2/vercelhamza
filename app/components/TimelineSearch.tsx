@@ -37,21 +37,26 @@ const TimelineSearch: React.FC<UserTableProps> = ({ users, loading }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-  // For searching orders (past, present, future)
-const [searchOrderNo, setSearchOrderNo] = useState("");
-const [confirmedSearch, setConfirmedSearch] = useState("");
-const [searchResult, setSearchResult] = useState<any | null>(null);
-const [isSearching, setIsSearching] = useState(false);
+  const [searchOrderNo, setSearchOrderNo] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
 
+  // Fixed timezone functions - work in ANY timezone (Istanbul, Saudi Arabia, etc.)
+  const formatDateForDB = useCallback((date: Date) => {
+    // Use local timezone, not UTC
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, []);
 
-  const formatDateForDB = useCallback(
-    (date: Date) => date.toISOString().split("T")[0],
-    []
-  );
-  const formatDateForInput = useCallback(
-    (date: Date) => date.toISOString().split("T")[0],
-    []
-  );
+  const formatDateForInput = useCallback((date: Date) => {
+    // Use local timezone for date input
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, []);
+
   const formatDisplayDate = useCallback((date: Date) => {
     const options: Intl.DateTimeFormatOptions = {
       weekday: "long",
@@ -61,6 +66,7 @@ const [isSearching, setIsSearching] = useState(false);
     };
     return date.toLocaleDateString("en-US", options);
   }, []);
+
   const isToday = useCallback((date: Date) => {
     const today = new Date();
     return date.toDateString() === today.toDateString();
@@ -119,6 +125,7 @@ const [isSearching, setIsSearching] = useState(false);
         };
       });
 
+      // Show all orders for the selected date
       const visibleCubes = allOrderCubes.filter(
         (cube: any) =>
           cube.tickId === null ||
@@ -170,9 +177,6 @@ const [isSearching, setIsSearching] = useState(false);
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
-    // Don't allow dragging if search is active
-    if (searchOrderNo) return;
-    
     const { over, active } = event;
     if (over) {
       const newTickId = over.id.toString();
@@ -212,82 +216,67 @@ const [isSearching, setIsSearching] = useState(false);
       formatDateForDB(selectedDate)
     );
   };
-const handleSearch = async () => {
-  if (!searchOrderNo.trim()) return;
 
-  setIsSearching(true);
-  setConfirmedSearch(searchOrderNo.trim());
-  setSearchResult(null);
+  const handleSearch = async () => {
+    if (!searchOrderNo.trim()) return;
 
-  try {
-    const result = await fetchOrders();
+    setIsSearching(true);
 
-    if (result.success && result.orders) {
-      const match = result.orders.find(
-        (order: any) =>
-          order.order_no?.toString() === searchOrderNo.trim()
-      );
+    try {
+      const result = await fetchOrders();
 
-      if (match) {
-        const product = match.order_items?.[0]?.products;
-
-        setSearchResult({
-          id: match.id.toString(),
-          orderno: match.order_no || match.id,
-          
-          size: `Qty: ${match.Quantity || 1}`,
-          type: match.type || "Roland",
-          completed: match.status === "completed",
-          assignedUserId: match.assigned_user_id,
-          timelineDate: match.timeline_date || null,
-          orderData: match,
-          creatorUser: match.creator || null,
-          customerName: match.customer_name,
-          createdAt: match.created_at,
-        });
-
-        // ✅ Check if unplaced
-        if (!match.timeline_position || match.timeline_position === "EMPTY" || match.timeline_position === null) {
-          alert("✅ Order found but not yet placed on the timeline.");
-          return;
-        }
-
-        // ✅ Auto-scroll to cube's tick position
-        const tickIndex = parseInt(
-          match.timeline_position?.replace("tick-", "") || "0",
-          10
+      if (result.success && result.orders) {
+        const match = result.orders.find(
+          (order: any) =>
+            order.order_no?.toString() === searchOrderNo.trim()
         );
-        if (!isNaN(tickIndex) && scrollRef.current) {
-          const scrollAmount = tickIndex * 150; // adjust based on tick width
-          scrollRef.current.scrollTo({
-            left: scrollAmount,
-            behavior: "smooth",
-          });
+
+        if (match) {
+          // Check if order has a timeline date
+          if (match.timeline_date) {
+            // Parse the date string correctly to avoid timezone issues
+            // timeline_date is in format 'YYYY-MM-DD'
+            const [year, month, day] = match.timeline_date.split('-').map(Number);
+            const orderDate = new Date(year, month - 1, day); // month is 0-indexed
+            setSelectedDate(orderDate);
+          }
+
+          // Check if unplaced
+          if (!match.timeline_position || match.timeline_position === "EMPTY" || match.timeline_position === null) {
+            alert("✅ Order found but not yet placed on the timeline.");
+            return;
+          }
+
+          // Auto-scroll to cube's tick position
+          setTimeout(() => {
+            const tickIndex = parseInt(
+              match.timeline_position?.replace("tick-", "") || "0",
+              10
+            );
+            if (!isNaN(tickIndex) && scrollRef.current) {
+              const scrollAmount = tickIndex * 150;
+              scrollRef.current.scrollTo({
+                left: scrollAmount,
+                behavior: "smooth",
+              });
+            }
+          }, 300);
+        } else {
+          alert("❌ No order found with that number.");
         }
-
-      } else {
-        setSearchResult("not-found");
-        alert("❌ No order found with that number.");
       }
+    } finally {
+      setIsSearching(false);
     }
-  } finally {
-    setIsSearching(false);
-  }
-};
+  };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") handleSearch();
+  };
 
-
-const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-  if (e.key === "Enter") handleSearch();
-};
-
-const filteredCubes =
-  confirmedSearch !== ""
-    ? cubes.filter(
-        (cube) => cube.orderNo?.toString() === confirmedSearch // exact match only
-      )
-    : [];
-
+  const clearSearch = () => {
+    setSearchOrderNo("");
+  };
 
   const BetterDatePicker = () => (
     <div className="relative">
@@ -326,101 +315,138 @@ const filteredCubes =
   );
 
   return (
-  <div>
-    {/* 🔍 Global Search Section */}
-    <div className="mb-8">
-      <div className="flex gap-2 max-w-md">
-        <input
-          type="text"
-          value={searchOrderNo}
-          onChange={(e) => setSearchOrderNo(e.target.value)}
-          placeholder="Enter full Order Number..."
-          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#636255] focus:border-transparent"
-        />
-        <button
-          onClick={handleSearch}
-          disabled={isSearching}
-          className="px-4 py-2 bg-[#636255] text-white rounded-lg hover:bg-[#504f44] disabled:opacity-50 transition"
-        >
-          {isSearching ? "Searching..." : "Search"}
-        </button>
-      </div>
-
-      {/* Search Result Display */}
-      {confirmedSearch && (
-        <div className="mt-4">
-          {searchResult === "not-found" && (
-            <div className="text-red-600 font-medium">
-              No order found with number {confirmedSearch}.
-            </div>
+    <div>
+      {/* Date Navigation Header */}
+      <div className="p-4 mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigateDate("prev")}
+            className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            title="Previous Day"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          
+          <button
+            onClick={() => navigateDate("today")}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              isToday(selectedDate) 
+                ? 'bg-[#636255] text-white' 
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+            }`}
+          >
+            Today
+          </button>
+          
+          <button
+            onClick={() => navigateDate("next")}
+            className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            title="Next Day"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+          
+          <BetterDatePicker />
+        </div>
+        
+        <div className="text-xl font-semibold text-gray-800">
+          {formatDisplayDate(selectedDate)}
+          {isToday(selectedDate) && (
+            <span className="ml-2 text-sm font-normal text-green-600">(Today)</span>
           )}
-
-         
-        </div>
-      )}
-    </div>
-
-    {/* 🕒 Timeline Section */}
-    <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCorners}>
-      <div
-        ref={scrollRef}
-        className="overflow-x-auto overflow-y-visible scrollbar-hide"
-      >
-        <div className="min-w-max mt-70">
-          <div className="flex justify-between items-end h-32 gap-5 min-w-[1200px]">
-            {TICKS.map((_, i) => {
-              const tickId = `tick-${i}`;
-              const cubesInTick = filteredCubes.filter(
-                (c) => c.tickId === tickId
-              );
-              return (
-                <DroppableTick key={tickId} id={tickId}>
-                  {cubesInTick.map((cube, index) => (
-                    <div
-                      key={cube.id}
-                      className="absolute"
-                      style={{ bottom: `${20 + index * 160}px` }}
-                    >
-                      <DraggableCube
-                        id={cube.id}
-                        title={cube.title}
-                        orderno={cube.orderno}
-                        type={cube.type}
-                        completed={cube.completed}
-                        onDelete={deleteCube}
-                        onComplete={handleComplete}
-                        users={users}
-                        onAssignUser={handleAssignUser}
-                        assignedUser={
-                          users.find(
-                            (u) => u.id === assignedUsers[cube.id]
-                          ) || null
-                        }
-                        creatorUser={cube.creatorUser}
-                        orderData={cube.orderData}
-                        isReadOnly={true}
-                      />
-                    </div>
-                  ))}
-                </DroppableTick>
-              );
-            })}
-          </div>
-          <div className="border-t-4 border-dashed border-gray-300 w-full min-w-[3700px]" />
-          <div className="flex justify-between mt-2 min-w-[1100px]">
-            {TICKS.map((_, i) => (
-              <div key={i} className="text-xs text-center w-4 font-bold">
-                {i}:00
-              </div>
-            ))}
-          </div>
         </div>
       </div>
-    </DndContext>
-  </div>
-);
 
+      {/* Search Section */}
+      <div className="mb-8">
+        <div className="flex gap-2 max-w-md">
+          <input
+            type="text"
+            value={searchOrderNo}
+            onChange={(e) => setSearchOrderNo(e.target.value)}
+            placeholder="Enter Order Number to search..."
+            onKeyDown={handleKeyDown}
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#636255] focus:border-transparent"
+          />
+          <button
+            onClick={handleSearch}
+            disabled={isSearching}
+            className="px-4 py-2 bg-[#636255] text-white rounded-lg hover:bg-[#504f44] disabled:opacity-50 transition"
+          >
+            {isSearching ? "Searching..." : "Search"}
+          </button>
+          {searchOrderNo && (
+            <button
+              onClick={clearSearch}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Timeline Section */}
+      <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCorners}>
+        <div
+          ref={scrollRef}
+          className="overflow-x-auto overflow-y-visible scrollbar-hide"
+        >
+          <div className="min-w-max mt-70">
+            <div className="flex justify-between items-end h-32 gap-5 min-w-[1200px]">
+              {TICKS.map((_, i) => {
+                const tickId = `tick-${i}`;
+                const cubesInTick = cubes.filter((c) => c.tickId === tickId);
+                return (
+                  <DroppableTick key={tickId} id={tickId}>
+                    {cubesInTick.map((cube, index) => (
+                      <div
+                        key={cube.id}
+                        className="absolute"
+                        style={{ bottom: `${20 + index * 160}px` }}
+                      >
+                        <DraggableCube
+                          id={cube.id}
+                          title={cube.title}
+                          orderno={cube.orderno}
+                          type={cube.type}
+                          completed={cube.completed}
+                          onDelete={deleteCube}
+                          onComplete={handleComplete}
+                          users={users}
+                          onAssignUser={handleAssignUser}
+                          assignedUser={
+                            users.find(
+                              (u) => u.id === assignedUsers[cube.id]
+                            ) || null
+                          }
+                          creatorUser={cube.creatorUser}
+                          orderData={cube.orderData}
+                          isReadOnly={true}
+                        />
+                      </div>
+                    ))}
+                  </DroppableTick>
+                );
+              })}
+            </div>
+            <div className="border-t-4 border-dashed border-gray-300 w-full min-w-[3700px]" />
+            <div className="flex justify-between mt-2 min-w-[1100px]">
+              {TICKS.map((_, i) => (
+                <div key={i} className="text-xs text-center w-4 font-bold">
+                  {i}:00
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </DndContext>
+    </div>
+  );
 };
 
 export default TimelineSearch;

@@ -73,7 +73,22 @@ const NewCodeForm = ({ onClose }: NewCodeFormProps) => {
         <div className="space-y-5">
           {/* Mode */}
           <div>
-            <label className="block text-sm font-medium mb-2">Mode</label>
+            
+          </div>
+
+          {/* Code name */}
+          <div>
+            <label className="block text-sm font-medium "></label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value.toUpperCase())}
+              disabled={mode === 'Auto'}
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+              placeholder="Enter code or auto-generated"
+            />
+          </div>
+          
             <div className="flex gap-2">
               <button
                 onClick={() => setMode('Manual')}
@@ -96,20 +111,6 @@ const NewCodeForm = ({ onClose }: NewCodeFormProps) => {
                 Auto
               </button>
             </div>
-          </div>
-
-          {/* Code name */}
-          <div>
-            <label className="block text-sm font-medium mb-2">Code *</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value.toUpperCase())}
-              disabled={mode === 'Auto'}
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-              placeholder="Enter code or auto-generated"
-            />
-          </div>
 
           {/* Type */}
           <div>

@@ -20,7 +20,7 @@ export default function DesignerPage() {
   const [assignedUsers, setAssignedUsers] = useState<{[key: string]: string | null}>({});
 
   const [activeSection, setActiveSection] = useState<
-     'order-tracking' | 'product-page' 
+     'order-tracking' | 'Roland' | 'Digital' | 'Sign' | 'Laser' | 'Wood' 
   >('order-tracking');
 
   const handleSectionChange = (section: typeof activeSection) => {
@@ -68,6 +68,7 @@ export default function DesignerPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hamburger Button */}
+      <div className="mb-8 flex justify-between items-center"></div>
       <div className="fixed top-6 left-6 z-40">
         <button
           onClick={() => setIsDrawerOpen(true)}
@@ -78,6 +79,7 @@ export default function DesignerPage() {
           <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
         </button>
       </div>
+      
 
       {/* Overlay */}
       {isDrawerOpen && (
@@ -135,9 +137,9 @@ export default function DesignerPage() {
             </button>
 
             <button
-              onClick={() => handleSectionChange('product-page')}
+              onClick={() => handleSectionChange('Roland')}
               className={`w-full text-left p-4 rounded-xl transition-all duration-200 ${
-                activeSection === 'product-page'
+                activeSection === 'Roland'
                   ? 'bg-[#636255] text-white shadow-lg'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
@@ -145,8 +147,72 @@ export default function DesignerPage() {
               <div className="flex items-center gap-3">
                 
                 <div>
-                  <div className="font-semibold">Product Gallery</div>
-                  <div className="text-sm opacity-80">Browse our catalog</div>
+                  <div className="font-semibold">Roland Products</div>
+                  <div className="text-sm opacity-80">Browse Roland Products</div>
+                </div>
+              </div>
+            </button>
+            <button
+              onClick={() => handleSectionChange('Digital')}
+              className={`w-full text-left p-4 rounded-xl transition-all duration-200 ${
+                activeSection === 'Digital'
+                  ? 'bg-[#636255] text-white shadow-lg'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                
+                <div>
+                  <div className="font-semibold">Digital Products Gallery</div>
+                  <div className="text-sm opacity-80">Browse our Digital Products</div>
+                </div>
+              </div>
+            </button>
+            <button
+              onClick={() => handleSectionChange('Sign')}
+              className={`w-full text-left p-4 rounded-xl transition-all duration-200 ${
+                activeSection === 'Sign'
+                  ? 'bg-[#636255] text-white shadow-lg'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                
+                <div>
+                  <div className="font-semibold">Sign Products Gallery</div>
+                  <div className="text-sm opacity-80">Browse our Sign Products</div>
+                </div>
+              </div>
+            </button>
+            <button
+              onClick={() => handleSectionChange('Laser')}
+              className={`w-full text-left p-4 rounded-xl transition-all duration-200 ${
+                activeSection === 'Laser'
+                  ? 'bg-[#636255] text-white shadow-lg'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                
+                <div>
+                  <div className="font-semibold">Laser Products Gallery</div>
+                  <div className="text-sm opacity-80">Browse our Laser Products</div>
+                </div>
+              </div>
+            </button>
+            <button
+              onClick={() => handleSectionChange('Wood')}
+              className={`w-full text-left p-4 rounded-xl transition-all duration-200 ${
+                activeSection === 'Wood'
+                  ? 'bg-[#636255] text-white shadow-lg'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                
+                <div>
+                  <div className="font-semibold">Wood Products Gallery</div>
+                  <div className="text-sm opacity-80">Browse our Wood Products</div>
                 </div>
               </div>
             </button>
@@ -187,11 +253,43 @@ export default function DesignerPage() {
           </div>
         )}
 
-        {activeSection === 'product-page' && (
+        {activeSection === 'Roland' && (
           <div>
             <div className="mb-8">
             </div>
-            <MyCarousel1 />
+            <MyCarousel1 type='Roland' />
+            
+          </div>
+        )}
+        {activeSection === 'Digital' && (
+          <div>
+            <div className="mb-8">
+            </div>
+            <MyCarousel1 type='Digital' />
+            
+          </div>
+        )}
+        {activeSection === 'Sign' && (
+          <div>
+            <div className="mb-8">
+            </div>
+            <MyCarousel1 type='Sign' />
+            
+          </div>
+        )}
+        {activeSection === 'Laser' && (
+          <div>
+            <div className="mb-8">
+            </div>
+            <MyCarousel1 type='Laser' />
+            
+          </div>
+        )}
+        {activeSection === 'Wood' && (
+          <div>
+            <div className="mb-8">
+            </div>
+            <MyCarousel1 type='Wood' />
             
           </div>
         )}
