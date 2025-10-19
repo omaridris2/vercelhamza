@@ -33,12 +33,18 @@ type CubeType =
   | "Wood"
   | "Reprint";
 
+const CUBE_TYPES: CubeType[] = ["Roland", "Digital", "Sing", "Laser", "Wood", "Reprint"];
+
 const TimelineSearch: React.FC<UserTableProps> = ({ users, loading }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [searchOrderNo, setSearchOrderNo] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  
+  // Filter state
+  const [activeFilters, setActiveFilters] = useState<CubeType[]>([]);
+  const [showAllTypes, setShowAllTypes] = useState(true);
 
   // Fixed timezone functions - work in ANY timezone (Istanbul, Saudi Arabia, etc.)
   const formatDateForDB = useCallback((date: Date) => {
@@ -278,6 +284,46 @@ const TimelineSearch: React.FC<UserTableProps> = ({ users, loading }) => {
     setSearchOrderNo("");
   };
 
+  // Filter functions
+  const toggleFilter = (type: CubeType) => {
+    setActiveFilters(prev => {
+      if (prev.includes(type)) {
+        const newFilters = prev.filter(f => f !== type);
+        setShowAllTypes(newFilters.length === 0);
+        return newFilters;
+      } else {
+        setShowAllTypes(false);
+        return [...prev, type];
+      }
+    });
+  };
+
+  const showAllTypesHandler = () => {
+    setActiveFilters([]);
+    setShowAllTypes(true);
+  };
+
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'Roland': return 'bg-[#636255] border-bg-[#636255] text-white';
+      case 'Digital': return 'bg-[#636255] border-bg-[#636255] text-white';
+      case 'Sing': return 'bg-[#636255] border-bg-[#636255] text-white';
+      case 'Laser': return 'bg-[#636255] border-bg-[#636255] text-white';
+      case 'Wood': return 'bg-[#636255] border-bg-[#636255] text-white';
+      case 'Reprint': return 'bg-[#636255] border-bg-[#636255] text-white';
+      default: return 'bg-[#636255] border-bg-[#636255] text-white';
+    }
+  };
+
+  const getFilteredCubes = () => {
+    if (showAllTypes || activeFilters.length === 0) {
+      return cubes;
+    }
+    return cubes.filter(cube => activeFilters.includes(cube.type as CubeType));
+  };
+
+  const filteredCubes = getFilteredCubes();
+
   const BetterDatePicker = () => (
     <div className="relative">
       <button
@@ -317,6 +363,36 @@ const TimelineSearch: React.FC<UserTableProps> = ({ users, loading }) => {
   return (
     <div>
       {/* Date Navigation Header */}
+      <div className="flex flex-wrap gap-7 justify-center mb-5">
+          <button
+            onClick={showAllTypesHandler}
+            className={`px-4 py-2 rounded-lg border-2 font-medium transition-colors text-2xl ${
+              showAllTypes 
+                ? 'bg-[#636255] text-white border-[#636255]'
+                : 'bg-white text-[#636255] border-[#636255] hover:bg-gray-50'
+            }`}
+          >
+            All Types 
+          </button>
+          
+          {CUBE_TYPES.map(type => {
+            const isActive = activeFilters.includes(type);
+            
+            return (
+              <button
+                key={type}
+                onClick={() => toggleFilter(type)}
+                className={`px-12 py-3.5 rounded-lg border-2 font-medium transition-colors text-2xl ${
+                  isActive
+                    ? `${getTypeColor(type)} border-current`
+                    : 'bg-white text-[#636255] border-[#636255] border-2 hover:bg-gray-50'
+                }`}
+              >
+                {type} 
+              </button>
+            );
+          })}
+        </div>
       <div className="p-4 mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
@@ -361,6 +437,8 @@ const TimelineSearch: React.FC<UserTableProps> = ({ users, loading }) => {
         </div>
       </div>
 
+      
+
       {/* Search Section */}
       <div className="mb-8">
         <div className="flex gap-2 max-w-md">
@@ -388,6 +466,12 @@ const TimelineSearch: React.FC<UserTableProps> = ({ users, loading }) => {
             </button>
           )}
         </div>
+      </div>
+
+      {/* Task Type Filters */}
+      <div className="mb-6">
+        
+        
       </div>
 
       {/* Timeline Section */}
@@ -424,7 +508,7 @@ const TimelineSearch: React.FC<UserTableProps> = ({ users, loading }) => {
             <div className="flex justify-between items-end h-32 gap-5 min-w-[1200px]">
               {TICKS.map((_, i) => {
                 const tickId = `tick-${i}`;
-                const cubesInTick = cubes.filter((c) => c.tickId === tickId);
+                const cubesInTick = filteredCubes.filter((c) => c.tickId === tickId);
                 return (
                   <DroppableTick key={tickId} id={tickId}>
                     {cubesInTick.map((cube, index) => (

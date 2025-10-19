@@ -173,7 +173,7 @@ export default function DesignerPage() {
               <div className="flex items-center gap-3">
                 
                 <div>
-                  <div className="font-semibold">Digital Products Gallery</div>
+                  <div className="font-semibold">Digital Products </div>
                   <div className="text-sm opacity-80">Browse our Digital Products</div>
                 </div>
               </div>
@@ -189,7 +189,7 @@ export default function DesignerPage() {
               <div className="flex items-center gap-3">
                 
                 <div>
-                  <div className="font-semibold">Sign Products Gallery</div>
+                  <div className="font-semibold">Sign Products </div>
                   <div className="text-sm opacity-80">Browse our Sign Products</div>
                 </div>
               </div>
@@ -205,7 +205,7 @@ export default function DesignerPage() {
               <div className="flex items-center gap-3">
                 
                 <div>
-                  <div className="font-semibold">Laser Products Gallery</div>
+                  <div className="font-semibold">Laser Products </div>
                   <div className="text-sm opacity-80">Browse our Laser Products</div>
                 </div>
               </div>
@@ -221,7 +221,7 @@ export default function DesignerPage() {
               <div className="flex items-center gap-3">
                 
                 <div>
-                  <div className="font-semibold">Wood Products Gallery</div>
+                  <div className="font-semibold">Wood Products </div>
                   <div className="text-sm opacity-80">Browse our Wood Products</div>
                 </div>
               </div>
