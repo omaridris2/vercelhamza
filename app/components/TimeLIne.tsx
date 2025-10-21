@@ -764,7 +764,7 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
 
   // Base height = 8rem (h-32)
   // Add 8rem (128px) for every 2 cubes beyond the first two
-  const timelineHeight = 128 + Math.max(0, maxStack - 2) * 130;
+  const timelineHeight = 128 + Math.max(0, maxStack - 2) * 120;
 
   return (
     <div
