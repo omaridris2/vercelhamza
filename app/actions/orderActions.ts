@@ -205,7 +205,7 @@ export async function fetchOrders() {
 }
 
 // 📍 Update order position on timeline
-export async function updateOrderPosition(orderId: string, tickId: string, date: string) {
+export async function updateOrderPosition(orderId: string, tickId: string | null, date: string | null) {
   try {
     const supabase = await createClient();
 

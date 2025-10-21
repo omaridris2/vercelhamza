@@ -27,7 +27,7 @@ type CubeType = "Roland" | "Digital" | "Sing" | "Laser" | "Wood" | "Reprint";
 const CUBE_TYPES: CubeType[] = ["Roland", "Digital", "Sing", "Laser", "Wood", "Reprint"];
 
 const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
-  const [activeTab, setActiveTab] = useState<'task creation' | 'user management' | 'task tracking'>('task creation');
+  const [activeTab, setActiveTab] = useState<'task creation'  | 'task tracking'>('task creation');
   const scrollRef = useRef<HTMLDivElement>(null);
   const designerScrollRef = useRef<HTMLDivElement>(null);
   
@@ -52,6 +52,12 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
       }
     }
   };
+  const isTaskMissed = (cube: any) => {
+  if (!cube.orderData?.deadline) return false;
+  const now = new Date();
+  const deadline = new Date(cube.orderData.deadline);
+  return deadline.getTime() - now.getTime() < 0;
+};
 
   const scrollDesigners = (direction: "left" | "right") => {
     if (designerScrollRef.current) {
@@ -63,6 +69,27 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
       }
     }
   };
+
+  const moveCubeToQueue = async (cubeId: string) => {
+  const cube = cubes.find(c => c.id === cubeId);
+  if (!cube) return;
+  
+  // Prevent moving completed or missed tasks
+  if (cube.completed || isTaskMissed(cube)) {
+    return;
+  }
+  
+  setCubes(prev =>
+    prev.map(cube =>
+      cube.id === cubeId
+        ? { ...cube, tickId: null, timelineDate: null }
+        : cube
+    )
+  );
+  
+  await updateOrderPosition(cubeId, null, null);
+};
+  
 
   const TICKS = Array.from({ length: 24 });
   
@@ -130,7 +157,7 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
         const orderItem = order.order_items?.[0];
         const product = orderItem?.products;
 
-        console.log('Order creator data:', order.creator); // Debug log
+        console.log('Order creator data:', order.creator);
 
         return {
           id: order.id.toString(),
@@ -143,7 +170,7 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
           assignedUserId: order.assigned_user_id,
           timelineDate: order.timeline_date || null,
           orderData: order,
-          creatorUser: order.creator || null, // Make sure this is from order.creator
+          creatorUser: order.creator || null,
           customerName: order.customer_name,
           orderNo: order.order_no,
           createdAt: order.created_at,
@@ -158,7 +185,7 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
           cube.timelineDate === formatDateForDB(selectedDate)
       );
 
-      console.log('Visible cubes:', visibleCubes); // Debug log
+      console.log('Visible cubes:', visibleCubes);
 
       setCubes(visibleCubes);
 
@@ -270,10 +297,8 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
   };
 
   const getFilteredDesigners = () => {
-    // Start with all designers
     let filtered = designers;
     
-    // If type filters are active, only show designers of those types
     if (!showAllTypes && activeFilters.length > 0) {
       filtered = filtered.filter(designer => 
         designer.type && activeFilters.includes(designer.type as CubeType)
@@ -306,39 +331,42 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
   };
 
   const deleteCube = async (id: string) => {
-  try {
-    // 1️⃣ Remove from backend (optional)
-    await deleteOrder(id); // implement in orderActions.ts or Supabase
-    setCubes(prev => prev.filter(cube => cube.id !== id));
-   
-  }catch (error) {
-    console.error("Failed to delete order:", error);
-  }
-};
-
-
-  // 
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { over, active } = event;
-
-    if (over) {
-      const newTickId = over.id.toString();
-      
-      setCubes(prev =>
-        prev.map(cube =>
-          cube.id === active.id
-            ? { ...cube, tickId: newTickId }
-            : cube
-        )
-      );
-      
-      await updateOrderPosition(
-        active.id.toString(), 
-        newTickId, 
-        formatDateForDB(selectedDate)
-      );
+    try {
+      await deleteOrder(id);
+      setCubes(prev => prev.filter(cube => cube.id !== id));
+    } catch (error) {
+      console.error("Failed to delete order:", error);
     }
   };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+  const { over, active } = event;
+
+  if (over) {
+    const cube = cubes.find(c => c.id === active.id);
+    
+    // Prevent dragging completed or missed tasks
+    if (cube && (cube.completed || isTaskMissed(cube))) {
+      return;
+    }
+    
+    const newTickId = over.id.toString();
+    
+    setCubes(prev =>
+      prev.map(cube =>
+        cube.id === active.id
+          ? { ...cube, tickId: newTickId }
+          : cube
+      )
+    );
+    
+    await updateOrderPosition(
+      active.id.toString(), 
+      newTickId, 
+      formatDateForDB(selectedDate)
+    );
+  }
+};
 
   const handleAssignUser = async (cubeId: string, userId: string | null) => {
     setAssignedUsers(prev => ({
@@ -396,6 +424,44 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
   };
 
   const filteredCubes = getFilteredCubes();
+
+  // Calculate task statistics (only for cubes placed on timeline)
+  const getTaskStats = () => {
+    const now = new Date();
+    const oneHourInMs = 60 * 60 * 1000;
+
+    // Filter to only include cubes that are placed on the timeline (have a tickId)
+    const placedCubes = filteredCubes.filter(cube => cube.tickId !== null);
+
+    const stats = {
+      total: placedCubes.length,
+      completed: 0,
+      urgent: 0,
+      missed: 0
+    };
+
+    placedCubes.forEach(cube => {
+      if (cube.completed) {
+        stats.completed++;
+      } else if (cube.orderData?.deadline) {
+        const deadline = new Date(cube.orderData.deadline);
+        const timeUntilDeadline = deadline.getTime() - now.getTime();
+
+        // Missed (deadline passed)
+        if (timeUntilDeadline < 0) {
+          stats.missed++;
+        }
+        // Urgent (less than 1 hour remaining)
+        else if (timeUntilDeadline <= oneHourInMs) {
+          stats.urgent++;
+        }
+      }
+    });
+
+    return stats;
+  };
+
+  const taskStats = getTaskStats();
 
   const BetterDatePicker = () => (
     <div className="relative">
@@ -478,7 +544,7 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
       <div className="flex items-center gap-4 mb-6">
         <button
           onClick={() => {
-            const tabs = ['task creation', 'user management', 'task tracking'] as const;
+            const tabs = ['task creation', 'task tracking'] as const;
             const currentIndex = tabs.indexOf(activeTab);
             const newIndex = currentIndex > 0 ? currentIndex - 1 : tabs.length - 1;
             setActiveTab(tabs[newIndex]);
@@ -492,7 +558,7 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
 
         <button
           onClick={() => {
-            const tabs = ['task creation', 'user management', 'task tracking'] as const;
+            const tabs = ['task creation', 'task tracking'] as const;
             const currentIndex = tabs.indexOf(activeTab);
             const newIndex = currentIndex < tabs.length - 1 ? currentIndex + 1 : 0;
             setActiveTab(tabs[newIndex]);
@@ -542,6 +608,8 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
                     assignedUser={users.find(u => u.id === assignedUsers[cube.id]) || null}
                     creatorUser={cube.creatorUser}
                     orderData={cube.orderData}
+                    onMoveToQueue={moveCubeToQueue}
+                    isMissed={isTaskMissed(cube)}
                   />
                 </div>
               ))}
@@ -567,7 +635,7 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
                    : 'bg-white text-[#636255] border-[#636255] hover:bg-gray-50'
                }`}
              >
-              All Types 
+              All Types {showAllTypes && <span className="ml-2"></span>}
             </button>
             
             {CUBE_TYPES.map(type => {
@@ -583,7 +651,7 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
                       : 'bg-white text-[#636255] border-[#636255] border-2 hover:bg-gray-50'
                   }`}
                 >
-                  {type} 
+                  {type} {isActive && <span className="ml-2"></span>}
                 </button>
               );
             })}
@@ -615,7 +683,7 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
                       : 'bg-white text-[#636255] border-[#636255] hover:bg-gray-50'
                   }`}
                 >
-                  All Designers
+                  All Designers {showAllUsers && <span className="ml-2"></span>}
                 </button>
                 
                 {getFilteredDesigners().map(designer => {
@@ -631,8 +699,7 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
                           : 'bg-white text-[#636255] border-[#636255] hover:bg-gray-50'
                       }`}
                     >
-                      {designer.name}
-                      
+                      {designer.name} {isActive && <span className="ml-2"></span>}
                     </button>
                   );
                 })}
@@ -651,10 +718,18 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
       )}
       
       <div className='flex gap-20 mb-4'>
-        <div className="text-2xl ">Total Tasks: {filteredCubes.length}</div>
-        <div className="text-2xl ">Tasks Completed: {filteredCubes.filter(c => c.completed).length}</div>
-        <div className="text-2xl ">Missed Tasks: {filteredCubes.filter(c => !c.completed).length}</div>
-        <div className="text-2xl ">In Progress: {filteredCubes.filter(c => !c.completed && c.tickId !== null).length}</div>
+        <div className="text-2xl font-semibold">
+          Total Tasks: <span >{taskStats.total}</span>
+        </div>
+        <div className="text-2xl font-semibold">
+          Tasks Completed: <span className="text-green-600">{taskStats.completed}</span>
+        </div>
+        <div className="text-2xl font-semibold">
+          Urgent: <span className="text-red-600">{taskStats.urgent}</span>
+        </div>
+        <div className="text-2xl font-semibold">
+          Missed: <span className="text-gray-600">{taskStats.missed}</span>
+        </div>
       </div>
 
       <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCorners}>
@@ -706,6 +781,7 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
                           assignedUser={users.find(u => u.id === assignedUsers[cube.id]) || null}
                           creatorUser={cube.creatorUser}
                           orderData={cube.orderData}
+                          onMoveToQueue={moveCubeToQueue}
                         />
                         
                       </div>

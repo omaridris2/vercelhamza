@@ -322,6 +322,12 @@ const TimelineSearch: React.FC<UserTableProps> = ({ users, loading }) => {
     return cubes.filter(cube => activeFilters.includes(cube.type as CubeType));
   };
 
+  const moveCubeToQueue = async (cubeId: string) => {
+  
+  
+  
+  }
+
   const filteredCubes = getFilteredCubes();
 
   const BetterDatePicker = () => (
@@ -534,6 +540,7 @@ const TimelineSearch: React.FC<UserTableProps> = ({ users, loading }) => {
                           }
                           creatorUser={cube.creatorUser}
                           orderData={cube.orderData}
+                          onMoveToQueue={moveCubeToQueue}
                           isReadOnly={true}
                         />
                       </div>

@@ -24,10 +24,13 @@ interface DraggableCubeProps {
   onAssignUser: (cubeId: string, userId: string | null) => void;
   creatorUser: User | null; 
   assignedUser: User | null;
+
+  onMoveToQueue: (id: string ) => void;
   
   isDragging?: boolean;
   isReadOnly?: boolean; 
   orderData?: any;
+  isMissed?: boolean;
 }
 
 const DraggableCube = ({ 
@@ -43,14 +46,21 @@ const DraggableCube = ({
   onComplete, 
   onAssignUser,
   isDragging,
-  
+
+  onMoveToQueue,
+  isMissed = false,
   isReadOnly,
   orderData
 }: DraggableCubeProps) => {
-  // Disable dragging if completed OR isReadOnly
+  // Check if deadline has passed
+  const isPastDeadline = orderData?.deadline 
+    ? new Date(orderData.deadline).getTime() < new Date().getTime()
+    : false;
+
+  // Disable dragging if completed, isReadOnly, isMissed, or past deadline
   const { attributes, listeners, setNodeRef, transform } = useDraggable({ 
     id,
-    disabled: completed || isReadOnly
+    disabled: completed || isReadOnly || isMissed || isPastDeadline
   });
 
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
@@ -90,24 +100,39 @@ const DraggableCube = ({
     setMenuPosition({ x, y });
   };
   
- const getColorClass = (type: string) => {
-  // Check if deadline has passed
-  if (orderData?.deadline && new Date(orderData.deadline) < new Date() && !completed) {
-    return 'from-red-500 to-red-600 border-red-600';
-  }
+  const getColorClass = (type: string) => {
+    if (completed) {
+      return 'from-green-500 to-green-600 border-green-400';
+    }
 
-  if (completed) {
-    return 'from-green-500 to-green-600 border-green-400';
-  }
-  switch (type) {
-    case 'urgent':
-      return 'from-red-500 to-red-600 border-red-400';
-    case 'low-priority':
-      return 'from-gray-400 to-gray-500 border-gray-300';
-    default:
-      return 'from-yellow-400 to-yellow-500 border-yellow-300';
-  }
-};
+    // Check deadline status
+    if (orderData?.deadline) {
+      const now = new Date();
+      const deadline = new Date(orderData.deadline);
+      const timeUntilDeadline = deadline.getTime() - now.getTime();
+      const oneHourInMs = 60 * 60 * 1000;
+
+      // Deadline has passed - gray
+      if (timeUntilDeadline < 0) {
+        return 'from-gray-400 to-gray-500 border-gray-600';
+      }
+
+      // Less than 1 hour remaining - red
+      if (timeUntilDeadline <= oneHourInMs) {
+        return 'from-red-500 to-red-600 border-red-600';
+      }
+    }
+
+    // Default colors based on type
+    switch (type) {
+      case 'urgent':
+        return 'from-red-500 to-red-600 border-red-400';
+      case 'low-priority':
+        return 'from-gray-400 to-gray-500 border-gray-300';
+      default:
+        return 'from-yellow-400 to-yellow-500 border-yellow-300';
+    }
+  };
 
 
   const getUserInitials = (name: string | null) => {
@@ -374,14 +399,14 @@ const DraggableCube = ({
 
       <div
         ref={setNodeRef}
-        {...(completed || isReadOnly ? {} : listeners)}
-        {...(completed || isReadOnly ? {} : attributes)}
+        {...(completed || isReadOnly || isPastDeadline ? {} : listeners)}
+        {...(completed || isReadOnly || isPastDeadline ? {} : attributes)}
         onContextMenu={handleContextMenu}
         className={`w-40 h-40 rounded-2xl shadow-lg flex flex-col justify-center items-center text-white font-bold border-2 bg-[#636255]
-            border-gradient-to-br ${getColorClass(type)} ${completed || isReadOnly ? 'cursor-default' : 'cursor-pointer'} relative
-            ${isDragging ? 'opacity-100' : 'opacity-100'}`}
+    border-gradient-to-br ${getColorClass(type)} ${completed || isReadOnly || isMissed || isPastDeadline ? 'cursor-default' : 'cursor-pointer'} relative
+    ${isDragging ? 'opacity-100' : 'opacity-100'}`}
         style={{
-          transform: transform && !completed && !isReadOnly
+          transform: transform && !completed && !isReadOnly && !isPastDeadline
             ? `translate(${transform.x}px, ${transform.y}px)`
             : undefined,
           userSelect: 'none',
@@ -518,6 +543,17 @@ const DraggableCube = ({
                 ✅ Mark as Complete
               </div>
             )}
+            {!isReadOnly && !completed && !isMissed &&  (
+  <div
+    className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
+    onClick={() => {
+      onMoveToQueue(id);
+      setMenuPosition(null);
+    }}
+  >
+    ↩️ Move to Queue
+  </div>
+)}
             {!isReadOnly && (
             <div
               className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-red-600"
