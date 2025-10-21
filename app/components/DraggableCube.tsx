@@ -24,9 +24,7 @@ interface DraggableCubeProps {
   onAssignUser: (cubeId: string, userId: string | null) => void;
   creatorUser: User | null; 
   assignedUser: User | null;
-
-  onMoveToQueue: (id: string ) => void;
-  
+  onMoveToQueue: (id: string) => void;
   isDragging?: boolean;
   isReadOnly?: boolean; 
   orderData?: any;
@@ -46,58 +44,63 @@ const DraggableCube = ({
   onComplete, 
   onAssignUser,
   isDragging,
-
   onMoveToQueue,
   isMissed = false,
   isReadOnly,
   orderData
 }: DraggableCubeProps) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  
   // Check if deadline has passed
   const isPastDeadline = orderData?.deadline 
     ? new Date(orderData.deadline).getTime() < new Date().getTime()
     : false;
 
-  // Disable dragging if completed, isReadOnly, isMissed, or past deadline
+  // Disable dragging if completed, isReadOnly, isMissed, past deadline, OR menu is open
+  const disabled = completed || isReadOnly || isMissed || isPastDeadline || menuOpen;
+  
   const { attributes, listeners, setNodeRef, transform } = useDraggable({ 
     id,
-    disabled: completed || isReadOnly || isMissed || isPastDeadline
+    disabled
   });
 
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const [showAssignMenu, setShowAssignMenu] = useState(false);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const cubeRef = useRef<HTMLDivElement>(null);
+
+  // Combined ref for both dnd-kit and our local reference
+  const combinedRef = (node: HTMLDivElement | null) => {
+    cubeRef.current = node;
+    setNodeRef(node);
+  };
 
   const handleContextMenu = (event: React.MouseEvent) => {
     event.preventDefault();
+    event.stopPropagation();
     
-    // Calculate menu dimensions (approximate)
     const menuWidth = 200;
-    const menuHeight = 300; // Approximate max height
-    
-    // Get viewport dimensions
+    const menuHeight = 300;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     
-    // Calculate position, adjusting if menu would overflow
     let x = event.clientX;
     let y = event.clientY;
     
-    // Flip horizontally if too close to right edge
     if (x + menuWidth > viewportWidth) {
       x = viewportWidth - menuWidth - 10;
     }
     
-    // Flip vertically if too close to bottom edge
     if (y + menuHeight > viewportHeight) {
       y = viewportHeight - menuHeight - 10;
     }
     
-    // Ensure menu doesn't go off-screen to the left or top
     x = Math.max(10, x);
     y = Math.max(10, y);
     
     setMenuPosition({ x, y });
+    setMenuOpen(true);
   };
   
   const getColorClass = (type: string) => {
@@ -105,25 +108,21 @@ const DraggableCube = ({
       return 'from-green-500 to-green-600 border-green-400';
     }
 
-    // Check deadline status
     if (orderData?.deadline) {
       const now = new Date();
       const deadline = new Date(orderData.deadline);
       const timeUntilDeadline = deadline.getTime() - now.getTime();
       const oneHourInMs = 60 * 60 * 1000;
 
-      // Deadline has passed - gray
       if (timeUntilDeadline < 0) {
         return 'from-gray-400 to-gray-500 border-gray-600';
       }
 
-      // Less than 1 hour remaining - red
       if (timeUntilDeadline <= oneHourInMs) {
         return 'from-red-500 to-red-600 border-red-600';
       }
     }
 
-    // Default colors based on type
     switch (type) {
       case 'urgent':
         return 'from-red-500 to-red-600 border-red-400';
@@ -133,7 +132,6 @@ const DraggableCube = ({
         return 'from-yellow-400 to-yellow-500 border-yellow-300';
     }
   };
-
 
   const getUserInitials = (name: string | null) => {
     if (!name) return 'U';
@@ -158,18 +156,28 @@ const DraggableCube = ({
     }
   };
 
+  // Improved click outside handler
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+    const handleInteractionOutside = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node;
+
+      if (
+        menuRef.current && !menuRef.current.contains(target) &&
+        cubeRef.current && !cubeRef.current.contains(target)
+      ) {
         setMenuPosition(null);
         setShowAssignMenu(false);
+        setMenuOpen(false);
       }
     };
+
     if (menuPosition) {
-      document.addEventListener('click', handleClickOutside);
+      document.addEventListener('mousedown', handleInteractionOutside);
+      document.addEventListener('touchstart', handleInteractionOutside);
     }
     return () => {
-      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener('mousedown', handleInteractionOutside);
+      document.removeEventListener('touchstart', handleInteractionOutside);
     };
   }, [menuPosition]);
 
@@ -177,9 +185,9 @@ const DraggableCube = ({
     onAssignUser(id, userId);
     setMenuPosition(null);
     setShowAssignMenu(false);
+    setMenuOpen(false);
   };
 
-  // Order Details Modal Component
   const OrderDetailsModal = () => {
     if (!showOrderModal || !orderData) return null;
 
@@ -187,7 +195,7 @@ const DraggableCube = ({
     const product = orderItem?.products;
     const options = orderItem?.order_item_options || [];
 
-    return (
+    return ReactDOM.createPortal(
       <div 
         className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]"
         onClick={() => setShowOrderModal(false)}
@@ -196,7 +204,6 @@ const DraggableCube = ({
           className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto m-4"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header */}
           <div className="bg-[#636255] text-white p-6 rounded-t-2xl flex justify-between items-center">
             <div>
               <h2 className="text-2xl font-bold">Order Details</h2>
@@ -209,10 +216,10 @@ const DraggableCube = ({
                 </p>
               )}
               {creatorUser && (
-                  <div className="  text-gray-200 text-sm mt-1">
-                     Created by: <span className="font-medium">{creatorUser.name}</span> ({creatorUser.role})
-                  </div>
-                )}
+                <div className="text-gray-200 text-sm mt-1">
+                  Created by: <span className="font-medium">{creatorUser.name}</span> ({creatorUser.role})
+                </div>
+              )}
             </div>
             <button 
               onClick={() => setShowOrderModal(false)}
@@ -222,10 +229,7 @@ const DraggableCube = ({
             </button>
           </div>
 
-          {/* Content */}
           <div className="p-6 space-y-6">
-            
-            {/* Order Summary */}
             <div className="bg-gray-50 rounded-lg p-4">
               <h3 className="font-semibold text-lg mb-3 text-gray-900">Order Summary</h3>
               <div className="grid grid-cols-2 gap-4">
@@ -248,19 +252,17 @@ const DraggableCube = ({
                   <p className="font-bold text-xl text-green-600">${Number(orderData.price).toFixed(2)}</p>
                 </div>
                 {orderData.deadline && (
-  <div>
-    <span className="text-sm text-gray-600">Deadline</span>
-    <p className="font-medium text-red-600">
-      {new Date(orderData.deadline).toLocaleString()}
-    </p>
-  </div>
-)}
+                  <div>
+                    <span className="text-sm text-gray-600">Deadline</span>
+                    <p className="font-medium text-red-600">
+                      {new Date(orderData.deadline).toLocaleString()}
+                    </p>
+                  </div>
+                )}
                 <div>
                   <span className="text-sm text-gray-600">Order Date</span>
                   <p className="font-medium text-gray-900">{new Date(orderData.created_at).toLocaleDateString()}</p>
                 </div>
-                
-                
                 {orderData.updated_at && (
                   <div>
                     <span className="text-sm text-gray-600">Last Updated</span>
@@ -278,7 +280,6 @@ const DraggableCube = ({
               </div>
             </div>
 
-            {/* Product Information */}
             {product && (
               <div className="border-t pt-6">
                 <h3 className="font-semibold text-lg mb-4 text-gray-900">Product Information</h3>
@@ -301,7 +302,6 @@ const DraggableCube = ({
               </div>
             )}
 
-            {/* Configuration Options */}
             {options.length > 0 && (
               <div className="border-t pt-6">
                 <h3 className="font-semibold text-lg mb-4 text-gray-900">Configuration</h3>
@@ -336,11 +336,7 @@ const DraggableCube = ({
                 <p className="text-gray-500 italic text-center">No configuration options selected</p>
               </div>
             )}
-            
 
-            
-                
-            {/* Price Breakdown */}
             <div className="border-t pt-6">
               <h3 className="font-semibold text-lg mb-4 text-gray-900">Price Breakdown</h3>
               <div className="space-y-2">
@@ -372,7 +368,6 @@ const DraggableCube = ({
             </div>
           </div>
 
-          {/* Footer */}
           <div className="bg-gray-50 p-6 rounded-b-2xl flex justify-end gap-3">
             <button
               onClick={() => setShowOrderModal(false)}
@@ -388,30 +383,48 @@ const DraggableCube = ({
             </button>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   };
 
   return (
     <>
-      {/* Order Details Modal */}
       <OrderDetailsModal />
 
       <div
-        ref={setNodeRef}
-        {...(completed || isReadOnly || isPastDeadline ? {} : listeners)}
-        {...(completed || isReadOnly || isPastDeadline ? {} : attributes)}
+        ref={combinedRef}
+        {...(disabled ? {} : listeners)}
+        {...(disabled ? {} : attributes)}
         onContextMenu={handleContextMenu}
         className={`w-40 h-40 rounded-2xl shadow-lg flex flex-col justify-center items-center text-white font-bold border-2 bg-[#636255]
-    border-gradient-to-br ${getColorClass(type)} ${completed || isReadOnly || isMissed || isPastDeadline ? 'cursor-default' : 'cursor-pointer'} relative
-    ${isDragging ? 'opacity-100' : 'opacity-100'}`}
+          border-gradient-to-br ${getColorClass(type)} ${disabled ? 'cursor-default' : 'cursor-pointer'} relative
+          ${isDragging ? 'opacity-100' : 'opacity-100'}`}
         style={{
-          transform: transform && !completed && !isReadOnly && !isPastDeadline
+          transform: transform && !disabled
             ? `translate(${transform.x}px, ${transform.y}px)`
             : undefined,
           userSelect: 'none',
         }}
       >
+        {/* Status indicator circle at top-right inside */}
+        <div 
+          className={`absolute top-2 right-2 w-5 h-5 rounded-full border-2 border-gradient-to-br ${getColorClass(type)}`}
+          style={{
+            backgroundColor: completed 
+              ? 'rgb(34, 197, 94)' // green-500
+              : isPastDeadline 
+                ? 'rgb(156, 163, 175)' // gray-400
+                : orderData?.deadline && new Date(orderData.deadline).getTime() - new Date().getTime() <= 60 * 60 * 1000
+                  ? 'rgb(239, 68, 68)' // red-500
+                  : type === 'urgent'
+                    ? 'rgb(239, 68, 68)' // red-500
+                    : type === 'low-priority'
+                      ? 'rgb(156, 163, 175)' // gray-400
+                      : 'rgb(250, 204, 21)' // yellow-400
+          }}
+        />
+        
         <div className="text-center px-2">
           <div className="text-lg font-bold truncate" title={orderData?.customer_name || title}>
             {orderData?.customer_name || title}
@@ -423,12 +436,6 @@ const DraggableCube = ({
             {type}
           </div>
         </div>
-        
-        {completed && (
-          <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-            <span className="text-white text-xs">✓</span>
-          </div>
-        )}
         
         {assignedUser && (
           <div 
@@ -444,6 +451,7 @@ const DraggableCube = ({
         ReactDOM.createPortal(
           <div
             ref={menuRef}
+            onClick={(e) => e.stopPropagation()}
             style={{
               position: 'absolute',
               top: menuPosition.y + window.scrollY,
@@ -458,27 +466,27 @@ const DraggableCube = ({
             }}
             onContextMenu={e => e.preventDefault()}
           >
-            {/* View Order Details */}
             {orderData && (
               <div
                 className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
                 onClick={() => {
                   setShowOrderModal(true);
                   setMenuPosition(null);
+                  setMenuOpen(false);
                 }}
               >
                 📋 View Order Details
               </div>
             )}
 
-            {/* Assignment Section */}
-            {!isReadOnly  && ( <div
-              className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
-              onClick={() => setShowAssignMenu(!showAssignMenu)}
-            >
-              👤 Assign to User {showAssignMenu ? '▲' : '▼'}
-            </div> )}
-            
+            {!isReadOnly && (
+              <div
+                className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
+                onClick={() => setShowAssignMenu(!showAssignMenu)}
+              >
+                👤 Assign to User {showAssignMenu ? '▲' : '▼'}
+              </div>
+            )}
 
             {showAssignMenu && (
               <div className="bg-gray-50 border-b border-gray-200">
@@ -532,38 +540,44 @@ const DraggableCube = ({
               </div>
             )}
 
-            {!isReadOnly &&!completed && (
+            {!isReadOnly && !completed && (
               <div
                 className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
                 onClick={() => {
                   onComplete(id);
                   setMenuPosition(null);
+                  setMenuOpen(false);
                 }}
               >
                 ✅ Mark as Complete
               </div>
             )}
-            {!isReadOnly && !completed && !isMissed &&  (
-  <div
-    className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
-    onClick={() => {
-      onMoveToQueue(id);
-      setMenuPosition(null);
-    }}
-  >
-    ↩️ Move to Queue
-  </div>
-)}
+
+            {!isReadOnly && !completed && !isMissed && (
+              <div
+                className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
+                onClick={() => {
+                  onMoveToQueue(id);
+                  setMenuPosition(null);
+                  setMenuOpen(false);
+                }}
+              >
+                ↩️ Move to Queue
+              </div>
+            )}
+
             {!isReadOnly && (
-            <div
-              className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-red-600"
-              onClick={() => {
-                onDelete(id);
-                setMenuPosition(null);
-              }}
-            >
-              🗑️ Delete
-            </div>)}
+              <div
+                className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-red-600"
+                onClick={() => {
+                  onDelete(id);
+                  setMenuPosition(null);
+                  setMenuOpen(false);
+                }}
+              >
+                🗑️ Delete
+              </div>
+            )}
           </div>,
           document.body
         )}

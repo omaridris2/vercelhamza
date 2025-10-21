@@ -755,41 +755,59 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           <div className="min-w-max mt-70">
-            <div className="flex justify-between items-end h-32 w-full min-w-[1200px] gap-[20px]">
-              {TICKS.map((_, i) => {
-                const tickId = `tick-${i}`;
-                const cubesInTick = filteredCubes.filter(c => c.tickId === tickId);
+            {(() => {
+  const maxStack = Math.max(
+    ...TICKS.map((_, i) =>
+      filteredCubes.filter(c => c.tickId === `tick-${i}`).length
+    )
+  );
 
-                return (
-                  <DroppableTick key={tickId} id={tickId}>
-                    {cubesInTick.map((cube, index) => (
-                      <div 
-                        key={cube.id} 
-                        className="absolute"
-                        style={{ bottom: `${20 + (index * 160)}px` }}
-                      >
-                        <DraggableCube 
-                          id={cube.id} 
-                          title={cube.title} 
-                          orderno={cube.orderno} 
-                          type={cube.type} 
-                          completed={cube.completed}
-                          onDelete={deleteCube} 
-                          onComplete={handleComplete} 
-                          users={users} 
-                          onAssignUser={handleAssignUser} 
-                          assignedUser={users.find(u => u.id === assignedUsers[cube.id]) || null}
-                          creatorUser={cube.creatorUser}
-                          orderData={cube.orderData}
-                          onMoveToQueue={moveCubeToQueue}
-                        />
-                        
-                      </div>
-                    ))}
-                  </DroppableTick>
-                );
-              })}
-            </div>
+  // Base height = 8rem (h-32)
+  // Add 8rem (128px) for every 2 cubes beyond the first two
+  const timelineHeight = 128 + Math.max(0, maxStack - 2) * 130;
+
+  return (
+    <div
+      className="flex justify-between items-end w-full min-w-[1200px] gap-[20px] transition-all duration-300"
+      style={{ height: `${timelineHeight}px` }}
+    >
+      {TICKS.map((_, i) => {
+        const tickId = `tick-${i}`;
+        const cubesInTick = filteredCubes.filter(c => c.tickId === tickId);
+
+        return (
+          <DroppableTick key={tickId} id={tickId}>
+            {cubesInTick.map((cube, index) => (
+              <div
+                key={cube.id}
+                className="absolute"
+                style={{ bottom: `${20 + index * 160}px` }}
+              >
+                <DraggableCube
+                  id={cube.id}
+                  title={cube.title}
+                  orderno={cube.orderno}
+                  type={cube.type}
+                  completed={cube.completed}
+                  onDelete={deleteCube}
+                  onComplete={handleComplete}
+                  users={users}
+                  onAssignUser={handleAssignUser}
+                  assignedUser={
+                    users.find(u => u.id === assignedUsers[cube.id]) || null
+                  }
+                  creatorUser={cube.creatorUser}
+                  orderData={cube.orderData}
+                  onMoveToQueue={moveCubeToQueue}
+                />
+              </div>
+            ))}
+          </DroppableTick>
+        );
+      })}
+    </div>
+  );
+})()}
                     
             <div className="border-t-4 border-dashed border-gray-300 w-full min-w-[3700px]" />
 
