@@ -542,7 +542,7 @@ const TimelineSearch: React.FC<UserTableProps> = ({ users, loading }) => {
                 className="absolute"
                 style={{ bottom: `${20 + index * 160}px` }}
               >
-                <DraggableCube
+                 <DraggableCube
                   id={cube.id}
                   title={cube.title}
                   orderno={cube.orderno}
@@ -558,6 +558,7 @@ const TimelineSearch: React.FC<UserTableProps> = ({ users, loading }) => {
                   creatorUser={cube.creatorUser}
                   orderData={cube.orderData}
                   onMoveToQueue={moveCubeToQueue}
+                  isReadOnly={true}
                 />
               </div>
             ))}
