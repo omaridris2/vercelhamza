@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { DndContext, closestCorners, DragEndEvent } from '@dnd-kit/core';
 import DraggableCube from './DraggableCube';
 import DroppableTick from './DroppableTick';
-import NewJobForm from './NewJobForm';
+
 import { fetchOrders, updateOrderPosition, updateOrderStatus, assignOrderToUser,deleteOrder } from '@/app/actions/orderActions';
 
 type User = {
@@ -26,8 +26,8 @@ type CubeType = "Roland" | "Digital" | "Sing" | "Laser" | "Wood" | "Reprint";
 
 const CUBE_TYPES: CubeType[] = ["Roland", "Digital", "Sing", "Laser", "Wood", "Reprint"];
 
-const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
-  const [activeTab, setActiveTab] = useState<'task creation'  | 'task tracking'>('task creation');
+const TimeLineO: React.FC<UserTableProps> = ({ users, loading }) => {
+  const [activeTab, setActiveTab] = useState<'Order Placement'  | 'Order Filtering'>('Order Placement');
   const scrollRef = useRef<HTMLDivElement>(null);
   const designerScrollRef = useRef<HTMLDivElement>(null);
   
@@ -544,7 +544,7 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
       <div className="flex items-center gap-4 mb-6">
         <button
           onClick={() => {
-            const tabs = ['task creation', 'task tracking'] as const;
+            const tabs = ['Order Placement', 'Order Filtering'] as const;
             const currentIndex = tabs.indexOf(activeTab);
             const newIndex = currentIndex > 0 ? currentIndex - 1 : tabs.length - 1;
             setActiveTab(tabs[newIndex]);
@@ -558,7 +558,7 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
 
         <button
           onClick={() => {
-            const tabs = ['task creation', 'task tracking'] as const;
+            const tabs = ['Order Placement', 'Order Filtering'] as const;
             const currentIndex = tabs.indexOf(activeTab);
             const newIndex = currentIndex < tabs.length - 1 ? currentIndex + 1 : 0;
             setActiveTab(tabs[newIndex]);
@@ -570,11 +570,9 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
         </button>
       </div>
       
-      {activeTab === 'task creation' && (
+      {activeTab === 'Order Placement' && (
        <div className="">
-  <NewJobForm
-   userId={users?.[0]?.id || ''}
-   />
+  
          
         <div className="mb-8">
         <h3 className="text-lg font-semibold text-gray-700 ">Task Queue - Click To Drop</h3>
@@ -620,7 +618,7 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
         </div> 
       )}
 
-      {activeTab === 'task tracking' && (
+      {activeTab === 'Order Filtering' && (
         <div className="mb-6">
         
         {/* Task Type Filters */}
@@ -825,4 +823,4 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
     </div>
   )
 }
-export default Timeline;
+export default TimeLineO;

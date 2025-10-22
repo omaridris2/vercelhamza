@@ -432,8 +432,15 @@ const DraggableCube = ({
           <div className="text-lg font-bold truncate">
             #{orderno}
           </div>
-          <div className="text-lg font-bold truncate">
-            {type}
+          <div className="text-sm font-semibold truncate">
+            {orderData?.deadline 
+              ? new Date(orderData.deadline).toLocaleString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })
+              : type}
           </div>
         </div>
         
@@ -475,7 +482,7 @@ const DraggableCube = ({
                   setMenuOpen(false);
                 }}
               >
-                📋 View Order Details
+                View Order Details
               </div>
             )}
 
@@ -484,7 +491,7 @@ const DraggableCube = ({
                 className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
                 onClick={() => setShowAssignMenu(!showAssignMenu)}
               >
-                👤 Assign to User {showAssignMenu ? '▲' : '▼'}
+                Assign to User {showAssignMenu ? '▲' : '▼'}
               </div>
             )}
 
@@ -508,7 +515,7 @@ const DraggableCube = ({
                     className="px-6 py-2 hover:bg-gray-200 cursor-pointer text-sm text-red-600"
                     onClick={() => handleAssignUser(null)}
                   >
-                    ❌ Unassign
+                    Unassign
                   </div>
                 )}
 
@@ -549,7 +556,7 @@ const DraggableCube = ({
                   setMenuOpen(false);
                 }}
               >
-                ✅ Mark as Complete
+               Mark as Complete
               </div>
             )}
 
@@ -562,7 +569,7 @@ const DraggableCube = ({
                   setMenuOpen(false);
                 }}
               >
-                ↩️ Move to Queue
+                 Move to Queue
               </div>
             )}
 
@@ -575,7 +582,7 @@ const DraggableCube = ({
                   setMenuOpen(false);
                 }}
               >
-                🗑️ Delete
+                Delete
               </div>
             )}
           </div>,
