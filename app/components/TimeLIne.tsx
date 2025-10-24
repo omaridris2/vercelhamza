@@ -481,39 +481,44 @@ const handleComplete = async (id: string) => {
 
   // ✅ Updated: Task stats now properly handle reprint status
   const getTaskStats = () => {
-    const now = new Date();
-    const oneHourInMs = 60 * 60 * 1000;
+  const now = new Date();
+  const oneHourInMs = 60 * 60 * 1000;
 
-    const placedCubes = filteredCubes.filter(cube => cube.tickId !== null);
+  const placedCubes = filteredCubes.filter(cube => cube.tickId !== null);
 
-    const stats = {
-      total: placedCubes.length,
-      completed: 0,
-      urgent: 0,
-      missed: 0,
-      reprint: 0
-    };
-
-    placedCubes.forEach(cube => {
-      // Check reprint first (highest priority)
-      if (reprintCubes.has(cube.id)) {
-        stats.reprint++;
-      } else if (cube.completed) {
-        stats.completed++;
-      } else if (cube.orderData?.deadline) {
-        const deadline = new Date(cube.orderData.deadline);
-        const timeUntilDeadline = deadline.getTime() - now.getTime();
-
-        if (timeUntilDeadline < 0) {
-          stats.missed++;
-        } else if (timeUntilDeadline <= oneHourInMs) {
-          stats.urgent++;
-        }
-      }
-    });
-
-    return stats;
+  const stats = {
+    total: placedCubes.length,
+    completed: 0,
+    urgent: 0,
+    missed: 0,
+    reprint: 0,
+    inProcess: 0  // ✅ Add this
   };
+
+  placedCubes.forEach(cube => {
+    // Check reprint first (highest priority)
+    if (reprintCubes.has(cube.id)) {
+      stats.reprint++;
+    } else if (cube.completed) {
+      stats.completed++;
+    } else if (cube.orderData?.deadline) {
+      const deadline = new Date(cube.orderData.deadline);
+      const timeUntilDeadline = deadline.getTime() - now.getTime();
+
+      if (timeUntilDeadline < 0) {
+        stats.missed++;
+      } else if (timeUntilDeadline <= oneHourInMs) {
+        stats.urgent++;
+      } else {
+        stats.inProcess++;  // ✅ Active task
+      }
+    } else {
+      stats.inProcess++;  // ✅ Task with no deadline
+    }
+  });
+
+  return stats;
+};
 
   const taskStats = getTaskStats();
 
@@ -626,7 +631,13 @@ const handleComplete = async (id: string) => {
       
       {activeTab === 'task creation' && (
         <div className="">
-          <NewJobForm userId={users?.[0]?.id || ''} />
+         <NewJobForm
+  userId={users?.[0]?.id || ''}
+  onJobCreated={(newJob) => {
+    setCubes((prev) => [...prev, newJob]); // ✅ instantly append to UI
+  }}
+/>
+
          
           <div className="mb-8">
             <h3 className="text-lg font-semibold text-gray-700">Task Queue - Click To Drop</h3>
@@ -771,20 +782,20 @@ const handleComplete = async (id: string) => {
       )}
       
       <div className='flex gap-20 mb-4'>
-        <div className="text-2xl font-semibold">
-          In Process: <span>{taskStats.total}</span>
-        </div>
-        <div className="text-2xl font-semibold">
-          Tasks Completed: <span className="text-green-600">{taskStats.completed}</span>
-        </div>
-        
-        <div className="text-2xl font-semibold">
-          Missed: <span className="text-red-600">{taskStats.missed}</span>
-        </div>
-        <div className="text-2xl font-semibold">
-          Reprint: <span className="text-gray-600">{taskStats.reprint}</span>
-        </div>
-      </div>
+  <div className="text-2xl font-semibold">
+    In Process: <span>{taskStats.inProcess}</span>
+  </div>
+  <div className="text-2xl font-semibold">
+    Tasks Completed: <span className="text-green-600">{taskStats.completed}</span>
+  </div>
+  
+  <div className="text-2xl font-semibold">
+    Missed: <span className="text-red-600">{taskStats.missed}</span>
+  </div>
+  <div className="text-2xl font-semibold">
+    Reprint: <span className="text-gray-600">{taskStats.reprint}</span>
+  </div>
+</div>
 
       <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCorners}>
         <div className="flex justify-between items-center m-4">
