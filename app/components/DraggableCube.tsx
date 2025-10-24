@@ -29,6 +29,8 @@ interface DraggableCubeProps {
   isReadOnly?: boolean; 
   orderData?: any;
   isMissed?: boolean;
+  isReprint?: boolean;
+  onMarkAsReprint?: (id: string) => void;
 }
 
 const DraggableCube = ({ 
@@ -46,18 +48,23 @@ const DraggableCube = ({
   isDragging,
   onMoveToQueue,
   isMissed = false,
+  isReprint = false,
+  onMarkAsReprint,
   isReadOnly,
   orderData
 }: DraggableCubeProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
   
-  // Check if deadline has passed
-  const isPastDeadline = orderData?.deadline 
+  // Check if deadline has passed (but ignore if reprint)
+  const isPastDeadline = !isReprint && orderData?.deadline 
     ? new Date(orderData.deadline).getTime() < new Date().getTime()
     : false;
 
-  // Disable dragging if completed, isReadOnly, isMissed, past deadline, OR menu is open
-  const disabled = completed || isReadOnly || isMissed || isPastDeadline || menuOpen;
+  // ✅ Reprint tasks can ALWAYS be dragged (unless read-only or menu is open)
+  // Reprint status overrides completed, missed, and deadline checks
+  const disabled = isReprint 
+    ? (isReadOnly || menuOpen)  // Reprint: only disabled if read-only or menu open
+    : (completed || isReadOnly || isMissed || isPastDeadline || menuOpen);  // Non-reprint: normal rules
   
   const { attributes, listeners, setNodeRef, transform } = useDraggable({ 
     id,
@@ -104,10 +111,22 @@ const DraggableCube = ({
   };
   
   const getColorClass = (type: string) => {
+    // Reprint takes highest priority (gray)
+    if (isReprint) {
+      return 'from-gray-400 to-gray-500 border-gray-600';
+    }
+
+    // Completed (green)
     if (completed) {
       return 'from-green-500 to-green-600 border-green-400';
     }
 
+    // Missed takes next priority (red)
+    if (isMissed) {
+      return 'from-red-500 to-red-600 border-red-600';
+    }
+
+    // Deadline-based coloring
     if (orderData?.deadline) {
       const now = new Date();
       const deadline = new Date(orderData.deadline);
@@ -123,6 +142,7 @@ const DraggableCube = ({
       }
     }
 
+    // Type-based coloring
     switch (type) {
       case 'urgent':
         return 'from-red-500 to-red-600 border-red-400';
@@ -411,17 +431,21 @@ const DraggableCube = ({
         <div 
           className={`absolute top-2 right-2 w-5 h-5 rounded-full border-2 border-gradient-to-br ${getColorClass(type)}`}
           style={{
-            backgroundColor: completed 
-              ? 'rgb(34, 197, 94)' // green-500
-              : isPastDeadline 
-                ? 'rgb(156, 163, 175)' // gray-400
-                : orderData?.deadline && new Date(orderData.deadline).getTime() - new Date().getTime() <= 60 * 60 * 1000
-                  ? 'rgb(239, 68, 68)' // red-500
-                  : type === 'urgent'
-                    ? 'rgb(239, 68, 68)' // red-500
-                    : type === 'low-priority'
-                      ? 'rgb(156, 163, 175)' // gray-400
-                      : 'rgb(250, 204, 21)' // yellow-400
+            backgroundColor: isReprint
+              ? 'rgb(156, 163, 175)' // gray-400 for reprint
+              : completed 
+                ? 'rgb(34, 197, 94)' // green-500
+                : isMissed
+                  ? 'rgb(239, 68, 68)' // red-500 for missed
+                  : isPastDeadline 
+                    ? 'rgb(156, 163, 175)' // gray-400
+                    : orderData?.deadline && new Date(orderData.deadline).getTime() - new Date().getTime() <= 60 * 60 * 1000
+                      ? 'rgb(239, 68, 68)' // red-500
+                      : type === 'urgent'
+                        ? 'rgb(239, 68, 68)' // red-500
+                        : type === 'low-priority'
+                          ? 'rgb(156, 163, 175)' // gray-400
+                          : 'rgb(250, 204, 21)' // yellow-400
           }}
         />
         
@@ -454,140 +478,154 @@ const DraggableCube = ({
         )}
       </div>
 
-      {menuPosition &&
-        ReactDOM.createPortal(
-          <div
-            ref={menuRef}
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: 'absolute',
-              top: menuPosition.y + window.scrollY,
-              left: menuPosition.x + window.scrollX,
-              backgroundColor: 'white',
-              border: '1px solid #ccc',
-              borderRadius: '8px',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-              zIndex: 9999,
-              padding: '8px 0',
-              minWidth: 200,
-            }}
-            onContextMenu={e => e.preventDefault()}
-          >
-            {orderData && (
-              <div
-                className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
-                onClick={() => {
-                  setShowOrderModal(true);
-                  setMenuPosition(null);
-                  setMenuOpen(false);
-                }}
-              >
-                View Order Details
-              </div>
-            )}
+     {menuPosition &&
+  ReactDOM.createPortal(
+    <div
+      ref={menuRef}
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        position: 'absolute',
+        top: menuPosition.y + window.scrollY,
+        left: menuPosition.x + window.scrollX,
+        backgroundColor: 'white',
+        border: '1px solid #ccc',
+        borderRadius: '8px',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+        zIndex: 9999,
+        padding: '8px 0',
+        minWidth: 200,
+      }}
+      onContextMenu={e => e.preventDefault()}
+    >
+      {orderData && (
+        <div
+          className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
+          onClick={() => {
+            setShowOrderModal(true);
+            setMenuPosition(null);
+            setMenuOpen(false);
+          }}
+        >
+          View Order Details
+        </div>
+      )}
 
-            {!isReadOnly && (
-              <div
-                className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
-                onClick={() => setShowAssignMenu(!showAssignMenu)}
-              >
-                Assign to User {showAssignMenu ? '▲' : '▼'}
-              </div>
-            )}
+      {!isReadOnly && (
+        <div
+          className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
+          onClick={() => setShowAssignMenu(!showAssignMenu)}
+        >
+          Assign to User {showAssignMenu ? '▲' : '▼'}
+        </div>
+      )}
 
-            {showAssignMenu && (
-              <div className="bg-gray-50 border-b border-gray-200">
-                {assignedUser && (
-                  <div className="px-6 py-2 text-sm text-gray-600 border-b border-gray-200">
-                    <div className="font-medium">Currently assigned to:</div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <div className={`w-4 h-4 rounded-full ${getRoleColor(assignedUser.role)} flex items-center justify-center text-xs`}>
-                        {getUserInitials(assignedUser.name)}
-                      </div>
-                      <span>{assignedUser.name || 'Unknown'}</span>
-                      <span className="text-xs">({assignedUser.role || 'No role'})</span>
-                    </div>
-                  </div>
-                )}
-
-                {assignedUser && (
-                  <div
-                    className="px-6 py-2 hover:bg-gray-200 cursor-pointer text-sm text-red-600"
-                    onClick={() => handleAssignUser(null)}
-                  >
-                    Unassign
-                  </div>
-                )}
-
-                <div className="max-h-40 overflow-y-auto">
-                  {users
-                    .filter(user => !assignedUser || user.id !== assignedUser.id)
-                    .map(user => (
-                      <div
-                        key={user.id}
-                        className="px-6 py-2 hover:bg-gray-200 cursor-pointer text-sm flex items-center gap-2"
-                        onClick={() => handleAssignUser(user.id)}
-                      >
-                        <div className={`w-4 h-4 rounded-full ${getRoleColor(user.role)} flex items-center justify-center text-xs`}>
-                          {getUserInitials(user.name)}
-                        </div>
-                        <div>
-                          <div className="font-medium">{user.name || 'Unknown User'}</div>
-                          <div className="text-xs text-gray-500">{user.role || 'No role'}</div>
-                        </div>
-                      </div>
-                    ))}
+      {showAssignMenu && (
+        <div className="bg-gray-50 border-b border-gray-200">
+          {assignedUser && (
+            <div className="px-6 py-2 text-sm text-gray-600 border-b border-gray-200">
+              <div className="font-medium">Currently assigned to:</div>
+              <div className="flex items-center gap-2 mt-1">
+                <div className={`w-4 h-4 rounded-full ${getRoleColor(assignedUser.role)} flex items-center justify-center text-xs`}>
+                  {getUserInitials(assignedUser.name)}
                 </div>
+                <span>{assignedUser.name || 'Unknown'}</span>
+                <span className="text-xs">({assignedUser.role || 'No role'})</span>
+              </div>
+            </div>
+          )}
 
-                {users.length === 0 && (
-                  <div className="px-6 py-2 text-sm text-gray-500 italic">
-                    No users available
+          {assignedUser && (
+            <div
+              className="px-6 py-2 hover:bg-gray-200 cursor-pointer text-sm text-red-600"
+              onClick={() => handleAssignUser(null)}
+            >
+              Unassign
+            </div>
+          )}
+
+          <div className="max-h-40 overflow-y-auto">
+            {users
+              .filter(user => !assignedUser || user.id !== assignedUser.id)
+              .map(user => (
+                <div
+                  key={user.id}
+                  className="px-6 py-2 hover:bg-gray-200 cursor-pointer text-sm flex items-center gap-2"
+                  onClick={() => handleAssignUser(user.id)}
+                >
+                  <div className={`w-4 h-4 rounded-full ${getRoleColor(user.role)} flex items-center justify-center text-xs`}>
+                    {getUserInitials(user.name)}
                   </div>
-                )}
-              </div>
-            )}
+                  <div>
+                    <div className="font-medium">{user.name || 'Unknown User'}</div>
+                    <div className="text-xs text-gray-500">{user.role || 'No role'}</div>
+                  </div>
+                </div>
+              ))}
+          </div>
 
-            {!isReadOnly && !completed && (
-              <div
-                className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
-                onClick={() => {
-                  onComplete(id);
-                  setMenuPosition(null);
-                  setMenuOpen(false);
-                }}
-              >
-               Mark as Complete
-              </div>
-            )}
+          {users.length === 0 && (
+            <div className="px-6 py-2 text-sm text-gray-500 italic">
+              No users available
+            </div>
+          )}
+        </div>
+      )}
 
-            {!isReadOnly && !completed && !isMissed && (
-              <div
-                className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
-                onClick={() => {
-                  onMoveToQueue(id);
-                  setMenuPosition(null);
-                  setMenuOpen(false);
-                }}
-              >
-                 Move to Queue
-              </div>
-            )}
+      {/* ✅ Updated: Allow reprint tasks to be marked as complete */}
+      {!isReadOnly && !completed && (
+        <div
+          className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
+          onClick={() => {
+            onComplete(id);
+            setMenuPosition(null);
+            setMenuOpen(false);
+          }}
+        >
+         Mark as Complete
+        </div>
+      )}
 
-            {!isReadOnly && (
-              <div
-                className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-red-600"
-                onClick={() => {
-                  onDelete(id);
-                  setMenuPosition(null);
-                  setMenuOpen(false);
-                }}
-              >
-                Delete
-              </div>
-            )}
-          </div>,
-          document.body
-        )}
+      {!isReadOnly && !isReprint && (
+        <div
+          className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
+          onClick={() => {
+            onMoveToQueue(id);
+            setMenuPosition(null);
+            setMenuOpen(false);
+          }}
+        >
+           Move to Queue
+        </div>
+      )}
+
+      {!isReadOnly && !isReprint && onMarkAsReprint && (
+        <div
+          className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
+          onClick={() => {
+            onMarkAsReprint(id);
+            setMenuPosition(null);
+            setMenuOpen(false);
+          }}
+        >
+          Mark as Reprint
+        </div>
+      )}
+
+      {!isReadOnly && (
+        <div
+          className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-red-600"
+          onClick={() => {
+            onDelete(id);
+            setMenuPosition(null);
+            setMenuOpen(false);
+          }}
+        >
+          Delete
+        </div>
+      )}
+    </div>,
+    document.body
+  )}
     </>
   );
 };
