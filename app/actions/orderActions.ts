@@ -12,10 +12,10 @@ type AddToCartData = {
   discount_code_id?: string;
   customer_name?: string;
   order_no?: number;
-  deadline?: string; // Add deadline field
+  deadline?: string;
 };
 
-// Replace the existing discount code increment logic with this:
+// Increment discount code usage
 async function incrementDiscountUsage(supabase: any, discountCodeId: string) {
   try {
     // Try RPC first
@@ -50,11 +50,45 @@ async function incrementDiscountUsage(supabase: any, discountCodeId: string) {
   }
 }
 
+// Validate discount code
+async function validateDiscountCode(supabase: any, discountCodeId: string) {
+  try {
+    const { data: discount, error } = await supabase
+      .from('discount_codes')
+      .select('*')
+      .eq('id', discountCodeId)
+      .single();
+
+    if (error) throw error;
+
+    // Check if discount is active
+    if (!discount.is_active) {
+      return { valid: false, error: 'Discount code is not active' };
+    }
+
+    // Check if discount has expired
+    const now = new Date();
+    const expirationDate = new Date(discount.expiration_date);
+    if (expirationDate < now) {
+      return { valid: false, error: 'Discount code has expired' };
+    }
+
+    // Check if use limit has been reached
+    if (discount.times_used >= discount.use_limit) {
+      return { valid: false, error: 'Discount code usage limit reached' };
+    }
+
+    return { valid: true, discount };
+  } catch (error) {
+    console.error('Error validating discount code:', error);
+    return { valid: false, error: 'Failed to validate discount code' };
+  }
+}
+
 // 🧩 Add product to cart — automatically fetch product type
 export async function addToCart(data: AddToCartData) {
   try {
     const supabase = await createClient();
-    const TEMP_USER_ID = '00000000-0000-0000-0000-000000000001';
 
     // Fetch product type
     const { data: product, error: productError } = await supabase
@@ -68,7 +102,15 @@ export async function addToCart(data: AddToCartData) {
       return { success: false, error: 'Failed to fetch product type.' };
     }
 
+    // Validate discount code if provided
     let discountValidated = false;
+    if (data.discount_code_id) {
+      const validation = await validateDiscountCode(supabase, data.discount_code_id);
+      if (!validation.valid) {
+        return { success: false, error: validation.error };
+      }
+      discountValidated = true;
+    }
 
     // Create order with product type, discount code, and deadline
     const { data: order, error: orderError } = await supabase
@@ -82,7 +124,7 @@ export async function addToCart(data: AddToCartData) {
         discount_code_id: data.discount_code_id || null,
         customer_name: data.customer_name || null,
         order_no: data.order_no || null,
-        deadline: data.deadline || null, // Add deadline to insert
+        deadline: data.deadline || null,
       })
       .select('id')
       .single();
@@ -95,6 +137,7 @@ export async function addToCart(data: AddToCartData) {
         await incrementDiscountUsage(supabase, data.discount_code_id);
       } catch (error) {
         console.error('Failed to increment discount usage:', error);
+        // Note: Order was already created, so we don't fail the entire operation
       }
     }
 
@@ -129,7 +172,6 @@ export async function addToCart(data: AddToCartData) {
   }
 }
 
-// 🧾 Fetch orders with their related data
 // 🧾 Fetch orders with their related data
 export async function fetchOrders() {
   try {
