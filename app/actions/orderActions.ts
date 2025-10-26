@@ -273,6 +273,23 @@ export async function updateOrderStatus(orderId: string, status: string) {
   try {
     const supabase = await createClient();
 
+    // Valid statuses including production stages
+    const validStatuses = [
+      'pending', 
+      'completed', 
+      'reprint', 
+      'print', 
+      'lamination', 
+      'cut', 
+      'finishing', 
+      'installation'
+    ];
+
+    if (!validStatuses.includes(status)) {
+      console.error('Invalid status:', status);
+      return { success: false, error: 'Invalid status' };
+    }
+
     const updateData: any = {
       status,
       updated_at: new Date().toISOString(),
@@ -283,19 +300,25 @@ export async function updateOrderStatus(orderId: string, status: string) {
       updateData.completed_at = new Date().toISOString();
     }
 
+    // If status is reprint or a production stage, clear completed_at
+    if (status === 'reprint' || ['print', 'lamination', 'cut', 'finishing', 'installation'].includes(status)) {
+      updateData.completed_at = null;
+    }
+
     const { error } = await supabase
       .from('orders')
       .update(updateData)
       .eq('id', orderId);
 
     if (error) throw error;
+    
+    console.log(`Order ${orderId} status updated to: ${status}`);
     return { success: true };
   } catch (error: any) {
     console.error('updateOrderStatus error:', error);
     return { success: false, error: error.message };
   }
 }
-
 // ✅ Assign order to a user
 export async function assignOrderToUser(orderId: string, userId: string | null) {
   try {

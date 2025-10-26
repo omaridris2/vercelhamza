@@ -39,6 +39,77 @@ const TrackOrder: React.FC<TrackOrderProps> = ({ users }) => {
     return date.toLocaleDateString("en-US", options);
   }, []);
 
+  const getStatusInfo = (order: any) => {
+    if (!order) return { label: 'Unknown', color: 'gray', bgColor: 'bg-gray-100', textColor: 'text-gray-800' };
+    
+    // Check for production stages in order
+    if (order.stage === 'print' || order.stage === 'printing') {
+      return { 
+        label: '🖨️ Printing', 
+        color: 'blue', 
+        bgColor: 'bg-blue-100', 
+        textColor: 'text-blue-800',
+        icon: '🖨️'
+      };
+    }
+    if (order.stage === 'lamination') {
+      return { 
+        label: '📄 Lamination', 
+        color: 'purple', 
+        bgColor: 'bg-purple-100', 
+        textColor: 'text-purple-800',
+        icon: '📄'
+      };
+    }
+    if (order.stage === 'cut' || order.stage === 'cutting') {
+      return { 
+        label: '✂️ Cutting', 
+        color: 'orange', 
+        bgColor: 'bg-orange-100', 
+        textColor: 'text-orange-800',
+        icon: '✂️'
+      };
+    }
+    if (order.stage === 'finishing') {
+      return { 
+        label: '✨ Finishing', 
+        color: 'pink', 
+        bgColor: 'bg-pink-100', 
+        textColor: 'text-pink-800',
+        icon: '✨'
+      };
+    }
+    if (order.stage === 'installation') {
+      return { 
+        label: '🔧 Installation', 
+        color: 'teal', 
+        bgColor: 'bg-teal-100', 
+        textColor: 'text-teal-800',
+        icon: '🔧'
+      };
+    }
+    
+    // Check completion status
+    if (order.status === 'completed' || order.completed) {
+      return { 
+        label: '✓ Completed', 
+        color: 'green', 
+        bgColor: 'bg-green-100', 
+        textColor: 'text-green-800',
+        icon: '✓'
+      };
+    }
+    
+    // Default to in progress
+    return { 
+      label: '⏳ In Progress', 
+      color: 'yellow', 
+      bgColor: 'bg-yellow-100', 
+      textColor: 'text-yellow-800',
+      icon: '⏳'
+    };
+  };
+
   const handleSearch = async () => {
     if (!searchOrderNo.trim()) {
       setErrorMessage("Please enter an order number");
@@ -93,6 +164,10 @@ const TrackOrder: React.FC<TrackOrderProps> = ({ users }) => {
             createdAt: match.created_at,
             updatedAt: match.updated_at,
             completedAt: match.completed_at,
+            stage: match.status || null,
+            status: match.status,
+            quantity: match.Quantity,
+            deadline: match.deadline,
           });
 
           setTimeout(() => {
@@ -136,6 +211,8 @@ const TrackOrder: React.FC<TrackOrderProps> = ({ users }) => {
     }
     return null;
   };
+
+  const statusInfo = getStatusInfo(foundOrder);
 
   return (
     <div className="p-6">
@@ -196,22 +273,101 @@ const TrackOrder: React.FC<TrackOrderProps> = ({ users }) => {
                 <span className="ml-2 font-semibold">{foundOrder.customerName || 'N/A'}</span>
               </div>
               <div>
-                <span className="text-gray-600">Status:</span>
-                <span className={`ml-2 font-semibold ${foundOrder.completed ? 'text-green-600' : 'text-orange-600'}`}>
-                  {foundOrder.completed ? 'Completed' : 'In Progress'}
+                <span className="text-gray-600">Current Stage:</span>
+                <span className={`ml-2 px-3 py-1 rounded-full text-sm font-semibold ${statusInfo.bgColor} ${statusInfo.textColor}`}>
+                  {statusInfo.label}
                 </span>
+              </div>
+              <div>
+                <span className="text-gray-600">Quantity:</span>
+                <span className="ml-2 font-semibold">{foundOrder.quantity || 'N/A'}</span>
               </div>
               <div>
                 <span className="text-gray-600">Scheduled Date:</span>
                 <span className="ml-2 font-semibold">{formatDateForDisplay(selectedDate)}</span>
               </div>
-              <div>
-                
+              {foundOrder.deadline && (
+                <div>
+                  <span className="text-gray-600">Deadline:</span>
+                  <span className="ml-2 font-semibold text-red-600">
+                    {new Date(foundOrder.deadline).toLocaleString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
+                </div>
+              )}
+              {getAssignedUser() && (
+                <div>
+                  <span className="text-gray-600">Assigned To:</span>
+                  <span className="ml-2 font-semibold">{getAssignedUser()?.name}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Production Stage Progress */}
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <h3 className="text-sm font-semibold text-gray-700 mb-4">Production Progress</h3>
+              <div className="flex items-center justify-between">
+                {['printing', 'lamination', 'cutting', 'finishing', 'installation'].map((stage, idx) => {
+                  const stageIcons = {
+                    printing: '🖨️',
+                    lamination: '📄',
+                    cutting: '✂️',
+                    finishing: '✨',
+                    installation: '🔧'
+                  };
+                  
+                  const stageLabels = {
+                    printing: 'Printing',
+                    lamination: 'Lamination',
+                    cutting: 'Cutting',
+                    finishing: 'Finishing',
+                    installation: 'Installation'
+                  };
+
+                  const isCurrentStage = foundOrder.stage === stage || 
+                    (stage === 'printing' && foundOrder.stage === 'print') ||
+                    (stage === 'cutting' && foundOrder.stage === 'cut');
+                  
+                  const isPastStage = foundOrder.completed || 
+                    (foundOrder.stage && ['printing', 'lamination', 'cutting', 'finishing', 'installation'].indexOf(foundOrder.stage) > idx);
+
+                  return (
+                    <div key={stage} className="flex flex-col items-center flex-1">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl mb-2 transition-all ${
+                        isCurrentStage 
+                          ? 'bg-blue-500 ring-4 ring-blue-200 scale-110' 
+                          : isPastStage
+                            ? 'bg-green-500'
+                            : 'bg-gray-200'
+                      }`}>
+                        {stageIcons[stage as keyof typeof stageIcons]}
+                      </div>
+                      <span className={`text-xs font-medium ${
+                        isCurrentStage ? 'text-blue-600 font-bold' : isPastStage ? 'text-green-600' : 'text-gray-500'
+                      }`}>
+                        {stageLabels[stage as keyof typeof stageLabels]}
+                      </span>
+                      {idx < 4 && (
+                        <div className={`absolute h-1 w-full mt-6 ${isPastStage ? 'bg-green-500' : 'bg-gray-200'}`} 
+                          style={{ 
+                            left: `${(idx + 1) * 20}%`,
+                            width: '20%',
+                            top: '24px'
+                          }} 
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
 
-          {/*timeline Section */}
+          {/* Timeline Section */}
           <div className="bg-white p-6 rounded-lg shadow">
             <h2 className="text-xl font-semibold mb-4 text-gray-800">Timeline Position</h2>
             

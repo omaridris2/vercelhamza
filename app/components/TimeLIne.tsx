@@ -63,6 +63,112 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
     const deadline = new Date(cube.orderData.deadline);
     return deadline.getTime() - now.getTime() < 0;
   };
+  const handleMarkAsPrint = async (cubeId: string) => {
+  // Update local state
+  setCubes(prev =>
+    prev.map(cube =>
+      cube.id === cubeId
+        ? { 
+            ...cube,
+            completed: false, // Clear completed status
+            orderData: { 
+              ...cube.orderData, 
+              status: 'print',
+              completed_at: null
+            }
+          }
+        : cube
+    )
+  );
+  
+  // Update database
+  await updateOrderStatus(cubeId, 'print');
+  console.log(`Marked cube ${cubeId} as Print`);
+};
+
+const handleMarkAsLamination = async (cubeId: string) => {
+  setCubes(prev =>
+    prev.map(cube =>
+      cube.id === cubeId
+        ? { 
+            ...cube,
+            completed: false,
+            orderData: { 
+              ...cube.orderData, 
+              status: 'lamination',
+              completed_at: null
+            }
+          }
+        : cube
+    )
+  );
+  
+  await updateOrderStatus(cubeId, 'lamination');
+  console.log(`Marked cube ${cubeId} as Lamination`);
+};
+
+const handleMarkAsCut = async (cubeId: string) => {
+  setCubes(prev =>
+    prev.map(cube =>
+      cube.id === cubeId
+        ? { 
+            ...cube,
+            completed: false,
+            orderData: { 
+              ...cube.orderData, 
+              status: 'cut',
+              completed_at: null
+            }
+          }
+        : cube
+    )
+  );
+  
+  await updateOrderStatus(cubeId, 'cut');
+  console.log(`Marked cube ${cubeId} as Cut`);
+};
+
+const handleMarkAsFinishing = async (cubeId: string) => {
+  setCubes(prev =>
+    prev.map(cube =>
+      cube.id === cubeId
+        ? { 
+            ...cube,
+            completed: false,
+            orderData: { 
+              ...cube.orderData, 
+              status: 'finishing',
+              completed_at: null
+            }
+          }
+        : cube
+    )
+  );
+  
+  await updateOrderStatus(cubeId, 'finishing');
+  console.log(`Marked cube ${cubeId} as Finishing`);
+};
+
+const handleMarkAsInstallation = async (cubeId: string) => {
+  setCubes(prev =>
+    prev.map(cube =>
+      cube.id === cubeId
+        ? { 
+            ...cube,
+            completed: false,
+            orderData: { 
+              ...cube.orderData, 
+              status: 'installation',
+              completed_at: null
+            }
+          }
+        : cube
+    )
+  );
+  
+  await updateOrderStatus(cubeId, 'installation');
+  console.log(`Marked cube ${cubeId} as Installation`);
+};
 
   const scrollDesigners = (direction: "left" | "right") => {
     if (designerScrollRef.current) {
@@ -675,6 +781,13 @@ const handleComplete = async (id: string) => {
                         isMissed={isTaskMissed(cube)}
                         isReprint={reprintCubes.has(cube.id)}
                         onMarkAsReprint={handleMarkAsReprint}
+                        onMarkAsPrint={(id) => handleMarkAsPrint(id)}
+                        onMarkAsLamination={(id) => handleMarkAsLamination(id)}
+                        onMarkAsCut={(id) => handleMarkAsCut(id)}
+                        onMarkAsFinishing={(id) => handleMarkAsFinishing(id)}
+                        onMarkAsInstallation={(id) => handleMarkAsInstallation(id)}
+                        
+                        
                       />
                     </div>
                   ))}
@@ -865,6 +978,11 @@ const handleComplete = async (id: string) => {
                               isMissed={isTaskMissed(cube)}
                               isReprint={reprintCubes.has(cube.id)}
                               onMarkAsReprint={handleMarkAsReprint}
+                              onMarkAsPrint={(id) => handleMarkAsPrint(id)}
+                              onMarkAsLamination={(id) => handleMarkAsLamination(id)}
+                              onMarkAsCut={(id) => handleMarkAsCut(id)}
+                              onMarkAsFinishing={(id) => handleMarkAsFinishing(id)}
+                              onMarkAsInstallation={(id) => handleMarkAsInstallation(id)}
                             />
                           </div>
                         ))}

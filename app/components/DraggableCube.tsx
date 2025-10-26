@@ -31,6 +31,11 @@ interface DraggableCubeProps {
   isMissed?: boolean;
   isReprint?: boolean;
   onMarkAsReprint?: (id: string) => void;
+  onMarkAsPrint?: (id: string) => void;
+  onMarkAsLamination?: (id: string) => void;
+  onMarkAsCut?: (id: string) => void;
+  onMarkAsFinishing?: (id: string) => void;
+  onMarkAsInstallation?: (id: string) => void;
 }
 
 const DraggableCube = ({ 
@@ -50,10 +55,16 @@ const DraggableCube = ({
   isMissed = false,
   isReprint = false,
   onMarkAsReprint,
+  onMarkAsPrint,
+  onMarkAsLamination,
+  onMarkAsCut,
+  onMarkAsFinishing,
+  onMarkAsInstallation,
   isReadOnly,
   orderData
 }: DraggableCubeProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showStageMenu, setShowStageMenu] = useState(false);
   
   // Check if deadline has passed (but ignore if reprint)
   const isPastDeadline = !isReprint && orderData?.deadline 
@@ -187,6 +198,7 @@ const DraggableCube = ({
       ) {
         setMenuPosition(null);
         setShowAssignMenu(false);
+        setShowStageMenu(false);
         setMenuOpen(false);
       }
     };
@@ -571,7 +583,98 @@ const DraggableCube = ({
         </div>
       )}
 
-      {/* ✅ Updated: Allow reprint tasks to be marked as complete */}
+      {/* Move to Stage submenu */}
+      {(onMarkAsPrint || onMarkAsLamination || onMarkAsCut || onMarkAsFinishing || onMarkAsInstallation) && (
+        <div className="relative">
+          <div
+            className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200 flex justify-between items-center"
+            onClick={() => setShowStageMenu(!showStageMenu)}
+            onMouseEnter={() => setShowStageMenu(true)}
+          >
+            <span>Update Status to</span>
+            
+          </div>
+
+          {showStageMenu && (
+            <div
+              className="absolute left-full top-0 bg-white border border-gray-300 rounded-lg shadow-lg min-w-[180px] ml-1"
+              style={{ zIndex: 10000 }}
+              onMouseLeave={() => setShowStageMenu(false)}
+            >
+              {onMarkAsPrint && (
+                <div
+                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer first:rounded-t-lg"
+                  onClick={() => {
+                    onMarkAsPrint(id);
+                    setMenuPosition(null);
+                    setMenuOpen(false);
+                    setShowStageMenu(false);
+                  }}
+                >
+                   Printing
+                </div>
+              )}
+
+              {onMarkAsLamination && (
+                <div
+                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                  onClick={() => {
+                    onMarkAsLamination(id);
+                    setMenuPosition(null);
+                    setMenuOpen(false);
+                    setShowStageMenu(false);
+                  }}
+                >
+                   Lamination
+                </div>
+              )}
+
+              {onMarkAsCut && (
+                <div
+                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                  onClick={() => {
+                    onMarkAsCut(id);
+                    setMenuPosition(null);
+                    setMenuOpen(false);
+                    setShowStageMenu(false);
+                  }}
+                >
+                   Cutting
+                </div>
+              )}
+
+              {onMarkAsFinishing && (
+                <div
+                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                  onClick={() => {
+                    onMarkAsFinishing(id);
+                    setMenuPosition(null);
+                    setMenuOpen(false);
+                    setShowStageMenu(false);
+                  }}
+                >
+                  Finishing
+                </div>
+              )}
+
+              {onMarkAsInstallation && (
+                <div
+                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer last:rounded-b-lg"
+                  onClick={() => {
+                    onMarkAsInstallation(id);
+                    setMenuPosition(null);
+                    setMenuOpen(false);
+                    setShowStageMenu(false);
+                  }}
+                >
+                  Installation
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {!isReadOnly && !completed && (
         <div
           className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200"
