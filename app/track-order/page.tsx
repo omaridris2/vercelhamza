@@ -206,10 +206,7 @@ const TrackOrder: React.FC<TrackOrderProps> = ({ users }) => {
                 <span className="ml-2 font-semibold">{formatDateForDisplay(selectedDate)}</span>
               </div>
               <div>
-                <span className="text-gray-600">Assigned To:</span>
-                <span className="ml-2 font-semibold">
-                  {getAssignedUser()?.name || 'Not Assigned'}
-                </span>
+                
               </div>
             </div>
           </div>
