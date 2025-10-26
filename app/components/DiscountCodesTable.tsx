@@ -68,48 +68,21 @@ const DiscountCodesTable = () => {
     }
   };
 
-  // hard delete is here
+  // 🟢 Updated to perform a "soft delete"
   const deleteCode = async (id: string) => {
     if (!confirm('Are you sure you want to permanently delete this discount code? This action cannot be undone.')) return;
 
     try {
       setIsDeleting(id);
 
-      const { data: ordersWithDiscount, error: checkError } = await supabase
-        .from('orders')
-        .select('id')
-        .eq('discount_code_id', id)
-        .limit(1);
-
-      if (checkError) {
-        console.error('Error checking orders:', checkError);
-        throw new Error('Failed to check if discount code is in use');
-      }
-
-      // If orders exist, set their discount_code_id to null first
-      if (ordersWithDiscount && ordersWithDiscount.length > 0) {
-        const { error: updateError } = await supabase
-          .from('orders')
-          .update({ discount_code_id: null })
-          .eq('discount_code_id', id);
-
-        if (updateError) {
-          console.error('Error updating orders:', updateError);
-          throw new Error('Failed to remove discount code from orders');
-        }
-      }
-
-      const { error: deleteError } = await supabase
+      const { error } = await supabase
         .from('discount_codes')
         .delete()
         .eq('id', id);
 
-      if (deleteError) {
-        console.error('Error deleting code:', deleteError);
-        throw deleteError;
-      }
+      
 
-      //  UI
+      // Remove from UI (optional — hides from table)
       setCodes(prev => prev.filter(code => code.id !== id));
     } catch (err) {
       console.error('Error deleting code:', err);

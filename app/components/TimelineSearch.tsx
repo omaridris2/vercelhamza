@@ -1,3 +1,4 @@
+"use client"
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { DndContext, closestCorners, DragEndEvent } from "@dnd-kit/core";
 import DraggableCube from "./DraggableCube";

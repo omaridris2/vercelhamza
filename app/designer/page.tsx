@@ -68,8 +68,7 @@ export default function DesignerPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hamburger Button */}
-      <div className="mb-8 flex justify-between items-center"></div>
-      <div className="fixed top-6 left-0 right-0 flex justify-between items-center px-6 z-40">
+      <div className="relative top-6 left-0 right-0 flex justify-between items-center px-6 z-40">
   {/* Three-dot button on the left */}
   <button
     onClick={() => setIsDrawerOpen(true)}

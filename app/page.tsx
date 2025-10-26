@@ -66,10 +66,14 @@ export default function LoginPage() {
     setLoading(false)
   }
 
+  const handleTrackOrder = () => {
+    router.push('/track-order')
+  }
+
   return (
     <main className="flex justify-center items-center min-h-screen font-sans">
       <div className="flex flex-col items-center">
-        {/* Logo on top */}
+       
         <img
           src="/logo.svg"
           alt="Logo"
@@ -78,8 +82,7 @@ export default function LoginPage() {
           className="mb-6"
         />
 
-        {/* Login box below */}
-        <div className="w-100 max-w-sm p-8 border border-slate-200 rounded-lg shadow-md">
+        <div className="w-100 max-w-sm p-8 border border-slate-200 rounded-lg shadow-md mb-2">
           <h1 className="text-center text-2xl font-semibold mb-8">Login</h1>
 
           <form onSubmit={handleLogin}>
@@ -141,6 +144,16 @@ export default function LoginPage() {
               {message}
             </div>
           )}
+        </div>
+
+        <div className="w-full h-30 max-w-sm p-8 border border-slate-200 rounded-lg shadow-md mb-10 flex justify-center items-center">
+          <button
+            type="button"
+            onClick={handleTrackOrder}
+            className="w-full py-3 px-4 text-white font-medium rounded-md text-base transition-colors bg-[#636254] hover:bg-[#545447] cursor-pointer"
+          >
+            Track Your Order
+          </button>
         </div>
       </div>
     </main>

@@ -60,7 +60,6 @@ const ProductPageClient = ({ product }: Props) => {
   const [quantity, setQuantity] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Discount code states
   const [discountCode, setDiscountCode] = useState<string>('');
   const [appliedDiscount, setAppliedDiscount] = useState<DiscountCode | null>(null);
   const [discountError, setDiscountError] = useState<string | null>(null);
@@ -98,7 +97,7 @@ const ProductPageClient = ({ product }: Props) => {
     if (appliedDiscount.type === 'Percentage') {
       return (subtotal * appliedDiscount.amount) / 100;
     } else {
-      // Fixed discount
+      // fixed discount
       return appliedDiscount.amount;
     }
   }, [appliedDiscount, basePrice, quantity]);
@@ -134,7 +133,7 @@ const ProductPageClient = ({ product }: Props) => {
         return;
       }
 
-      // Validate discount code
+      //   validate discount code
       if (!data.is_active) {
         setDiscountError('This discount code is no longer active');
         setAppliedDiscount(null);
@@ -181,7 +180,7 @@ const ProductPageClient = ({ product }: Props) => {
     );
 
     const result = await addToCart({
-      user_id: userId,          // <-- pass the user ID here
+      user_id: userId,          
       product_id: product.id,
       quantity,
       price: totalPrice,
@@ -224,7 +223,6 @@ const ProductPageClient = ({ product }: Props) => {
         <div className="bg-white rounded-2xl shadow-xl p-6 md:p-10">
           <div className="flex flex-col md:flex-row gap-10">
             
-            {/* LEFT: Product Image */}
             <div className="flex-shrink-0 md:w-1/3">
               {product.image_url ? (
                 <img
