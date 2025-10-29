@@ -55,6 +55,9 @@ export default function LoginPage() {
       else if (profile?.role === 'Designer') {
         router.push('/designer')
       }
+      else if (profile?.role === 'Operator') {
+        router.push('/operator')
+      }
       else {
         router.push('/home')
       }
