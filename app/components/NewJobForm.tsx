@@ -121,7 +121,7 @@ const NewJobForm = ({ userId, onJobCreated }: NewJobFormProps) => {
               </option>
               <option value="Roland">Roland</option>
               <option value="Digital">Digital</option>
-              <option value="Sing">Sing</option>
+              <option value="Sign">Sign</option>
               <option value="Laser">Laser</option>
               <option value="Wood">Wood</option>
               <option value="Reprint">Reprint</option>

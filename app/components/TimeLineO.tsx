@@ -3,7 +3,7 @@ import { DndContext, closestCorners, DragEndEvent } from '@dnd-kit/core';
 import DraggableCube from './DraggableCube';
 import DroppableTick from './DroppableTick';
 
-import { fetchOrders, updateOrderPosition, updateOrderStatus, assignOrderToUser,deleteOrder } from '@/app/actions/orderActions';
+import { fetchOrders, updateOrderPosition, updateOrderStatus, assignOrderToUser, deleteOrder } from '@/app/actions/orderActions';
 
 type User = {
   id: string;
@@ -17,17 +17,21 @@ type User = {
 interface UserTableProps {
   users: User[];
   assignedUsers: { [key: string]: string | null };
-  
   onAssignUser: (cubeId: string, userId: string | null) => void;
   loading?: boolean;
+  currentOperatorType?: string | null; // ADD THIS
 }
 
-type CubeType = "Roland" | "Digital" | "Sing" | "Laser" | "Wood" | "Reprint";
+type CubeType = "Roland" | "Digital" | "Sign" | "Laser" | "Wood" | "Reprint";
 
-const CUBE_TYPES: CubeType[] = ["Roland", "Digital", "Sing", "Laser", "Wood", "Reprint"];
+const CUBE_TYPES: CubeType[] = ["Roland", "Digital", "Sign", "Laser", "Wood", "Reprint"];
 
-const TimeLineO: React.FC<UserTableProps> = ({ users, loading }) => {
-  const [activeTab, setActiveTab] = useState<'Order Placement'  | 'Order Filtering'>('Order Placement');
+const TimeLineO: React.FC<UserTableProps> = ({ 
+  users, 
+  loading,
+  currentOperatorType // ADD THIS
+}) => {
+  const [activeTab, setActiveTab] = useState<'Order Placement' | 'Order Filtering'>('Order Placement');
   const scrollRef = useRef<HTMLDivElement>(null);
   const designerScrollRef = useRef<HTMLDivElement>(null);
   
@@ -52,12 +56,13 @@ const TimeLineO: React.FC<UserTableProps> = ({ users, loading }) => {
       }
     }
   };
+
   const isTaskMissed = (cube: any) => {
-  if (!cube.orderData?.deadline) return false;
-  const now = new Date();
-  const deadline = new Date(cube.orderData.deadline);
-  return deadline.getTime() - now.getTime() < 0;
-};
+    if (!cube.orderData?.deadline) return false;
+    const now = new Date();
+    const deadline = new Date(cube.orderData.deadline);
+    return deadline.getTime() - now.getTime() < 0;
+  };
 
   const scrollDesigners = (direction: "left" | "right") => {
     if (designerScrollRef.current) {
@@ -71,25 +76,24 @@ const TimeLineO: React.FC<UserTableProps> = ({ users, loading }) => {
   };
 
   const moveCubeToQueue = async (cubeId: string) => {
-  const cube = cubes.find(c => c.id === cubeId);
-  if (!cube) return;
-  
-  // Prevent moving completed or missed tasks
-  if (cube.completed || isTaskMissed(cube)) {
-    return;
-  }
-  
-  setCubes(prev =>
-    prev.map(cube =>
-      cube.id === cubeId
-        ? { ...cube, tickId: null, timelineDate: null }
-        : cube
-    )
-  );
-  
-  await updateOrderPosition(cubeId, null, null);
-};
-  
+    const cube = cubes.find(c => c.id === cubeId);
+    if (!cube) return;
+    
+    // Prevent moving completed or missed tasks
+    if (cube.completed || isTaskMissed(cube)) {
+      return;
+    }
+    
+    setCubes(prev =>
+      prev.map(cube =>
+        cube.id === cubeId
+          ? { ...cube, tickId: null, timelineDate: null }
+          : cube
+      )
+    );
+    
+    await updateOrderPosition(cubeId, null, null);
+  };
 
   const TICKS = Array.from({ length: 24 });
   
@@ -103,7 +107,7 @@ const TimeLineO: React.FC<UserTableProps> = ({ users, loading }) => {
     completed: boolean;
     assignedUserId?: string | null;
     orderData?: any;
-    creatorUser:User | null
+    creatorUser: User | null
     timelineDate?: string | null;
     customerName?: string | null;
     orderNo?: number | null;
@@ -117,7 +121,6 @@ const TimeLineO: React.FC<UserTableProps> = ({ users, loading }) => {
 
   // Helper functions for Date logic
   const formatDateForDB = useCallback((date: Date) => {
-    // Use local timezone, not UTC
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -125,7 +128,6 @@ const TimeLineO: React.FC<UserTableProps> = ({ users, loading }) => {
   }, []);
 
   const formatDateForInput = useCallback((date: Date) => {
-    // Use local timezone for date input
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -149,15 +151,14 @@ const TimeLineO: React.FC<UserTableProps> = ({ users, loading }) => {
 
   const loadOrders = useCallback(async () => {
     console.log('Loading orders for date:', formatDateForDB(selectedDate));
+    console.log('Operator type filter:', currentOperatorType);
 
     const result = await fetchOrders();
 
     if (result.success && result.orders && result.orders.length > 0) {
-      const allOrderCubes = result.orders.map((order: any) => {
+      let allOrderCubes = result.orders.map((order: any) => {
         const orderItem = order.order_items?.[0];
         const product = orderItem?.products;
-
-        console.log('Order creator data:', order.creator);
 
         return {
           id: order.id.toString(),
@@ -179,13 +180,21 @@ const TimeLineO: React.FC<UserTableProps> = ({ users, loading }) => {
         };
       });
 
+      // FILTER BY OPERATOR TYPE
+      if (currentOperatorType && currentOperatorType !== 'All') {
+        console.log('Filtering orders by type:', currentOperatorType);
+        allOrderCubes = allOrderCubes.filter((cube: any) => 
+          cube.type === currentOperatorType
+        );
+      }
+
       const visibleCubes = allOrderCubes.filter(
         (cube: any) =>
           cube.tickId === null ||
           cube.timelineDate === formatDateForDB(selectedDate)
       );
 
-      console.log('Visible cubes:', visibleCubes);
+      console.log('Filtered cubes:', visibleCubes);
 
       setCubes(visibleCubes);
 
@@ -200,7 +209,7 @@ const TimeLineO: React.FC<UserTableProps> = ({ users, loading }) => {
       setCubes([]);
       setAssignedUsers({});
     }
-  }, [formatDateForDB, selectedDate]);
+  }, [formatDateForDB, selectedDate, currentOperatorType]); // ADD currentOperatorType to dependencies
 
   useEffect(() => {
     loadOrders();
@@ -230,7 +239,7 @@ const TimeLineO: React.FC<UserTableProps> = ({ users, loading }) => {
     if (!isNaN(newDate.getTime())) {
       setSelectedDate(newDate);
     }
-    setIsDatePickerOpen(false); 
+    setIsDatePickerOpen(false);
   };
 
   const toggleFilter = (type: CubeType) => {
@@ -281,8 +290,8 @@ const TimeLineO: React.FC<UserTableProps> = ({ users, loading }) => {
   const getFilteredCubes = () => {
     let filtered = cubes;
     
-    // Apply type filters
-    if (!showAllTypes && activeFilters.length > 0) {
+    // Apply type filters (but only if not already filtered by operator type)
+    if (!currentOperatorType && !showAllTypes && activeFilters.length > 0) {
       filtered = filtered.filter(cube => activeFilters.includes(cube.type as CubeType));
     }
     
@@ -312,7 +321,7 @@ const TimeLineO: React.FC<UserTableProps> = ({ users, loading }) => {
     switch (type) {
       case 'Roland': return 'bg-[#636255] border-bg-[#636255] text-white';
       case 'Digital': return 'bg-[#636255] border-bg-[#636255] text-white';
-      case 'Sing': return 'bg-[#636255] border-bg-[#636255] text-white';
+      case 'Sign': return 'bg-[#636255] border-bg-[#636255] text-white';
       case 'Laser': return 'bg-[#636255] border-bg-[#636255] text-white';
       case 'Wood': return 'bg-[#636255] border-bg-[#636255] text-white';
       case 'Reprint': return 'bg-[#636255] border-bg-[#636255] text-white';
@@ -340,33 +349,33 @@ const TimeLineO: React.FC<UserTableProps> = ({ users, loading }) => {
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
-  const { over, active } = event;
+    const { over, active } = event;
 
-  if (over) {
-    const cube = cubes.find(c => c.id === active.id);
-    
-    // Prevent dragging completed or missed tasks
-    if (cube && (cube.completed || isTaskMissed(cube))) {
-      return;
+    if (over) {
+      const cube = cubes.find(c => c.id === active.id);
+      
+      // Prevent dragging completed or missed tasks
+      if (cube && (cube.completed || isTaskMissed(cube))) {
+        return;
+      }
+      
+      const newTickId = over.id.toString();
+      
+      setCubes(prev =>
+        prev.map(cube =>
+          cube.id === active.id
+            ? { ...cube, tickId: newTickId }
+            : cube
+        )
+      );
+      
+      await updateOrderPosition(
+        active.id.toString(), 
+        newTickId, 
+        formatDateForDB(selectedDate)
+      );
     }
-    
-    const newTickId = over.id.toString();
-    
-    setCubes(prev =>
-      prev.map(cube =>
-        cube.id === active.id
-          ? { ...cube, tickId: newTickId }
-          : cube
-      )
-    );
-    
-    await updateOrderPosition(
-      active.id.toString(), 
-      newTickId, 
-      formatDateForDB(selectedDate)
-    );
-  }
-};
+  };
 
   const handleAssignUser = async (cubeId: string, userId: string | null) => {
     setAssignedUsers(prev => ({
@@ -430,7 +439,6 @@ const TimeLineO: React.FC<UserTableProps> = ({ users, loading }) => {
     const now = new Date();
     const oneHourInMs = 60 * 60 * 1000;
 
-    // Filter to only include cubes that are placed on the timeline (have a tickId)
     const placedCubes = filteredCubes.filter(cube => cube.tickId !== null);
 
     const stats = {
@@ -447,12 +455,9 @@ const TimeLineO: React.FC<UserTableProps> = ({ users, loading }) => {
         const deadline = new Date(cube.orderData.deadline);
         const timeUntilDeadline = deadline.getTime() - now.getTime();
 
-        // Missed (deadline passed)
         if (timeUntilDeadline < 0) {
           stats.missed++;
-        }
-        // Urgent (less than 1 hour remaining)
-        else if (timeUntilDeadline <= oneHourInMs) {
+        } else if (timeUntilDeadline <= oneHourInMs) {
           stats.urgent++;
         }
       }
@@ -495,8 +500,8 @@ const TimeLineO: React.FC<UserTableProps> = ({ users, loading }) => {
 
   return (
     <div>
-      {/* date navigtion */}
-      <div className=" p-4 mb-6 flex items-center justify-between">
+      {/* date navigation */}
+      <div className="p-4 mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigateDate('prev')}
@@ -571,154 +576,154 @@ const TimeLineO: React.FC<UserTableProps> = ({ users, loading }) => {
       </div>
       
       {activeTab === 'Order Placement' && (
-       <div className="">
-  
-         
-        <div className="mb-8">
-        <h3 className="text-lg font-semibold text-gray-700 ">Task Queue - Click To Drop</h3>
-        <div className="min-h-[10px] bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-4">
-          {filteredCubes.filter(c => c.tickId === null).length === 0 ? (
-            <div className="flex items-center justify-center h-full text-gray-500 italic">
-              {activeFilters.length > 0 
-                ? `No ${activeFilters.join(', ')} tasks in queue.`
-                : "No tasks in queue. Create a new task to get started."
-              }
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-4">
-              {filteredCubes.filter(c => c.tickId === null).map(cube => (
-                <div
-                  key={cube.id}
-                  onClick={() => moveCubeToTimeline(cube.id)}
-                  className="cursor-pointer hover:transform hover:scale-105 transition-transform"
-                  title="Click to move to timeline"
-                >
-                  <DraggableCube 
-                    id={cube.id} 
-                    title={cube.title} 
-                    orderno={cube.orderno} 
-                    type={cube.type} 
-                    completed={cube.completed}
-                    onDelete={deleteCube} 
-                    onComplete={handleComplete} 
-                    users={users} 
-                    onAssignUser={handleAssignUser} 
-                    assignedUser={users.find(u => u.id === assignedUsers[cube.id]) || null}
-                    creatorUser={cube.creatorUser}
-                    orderData={cube.orderData}
-                    onMoveToQueue={moveCubeToQueue}
-                    isMissed={isTaskMissed(cube)}
-                  />
+        <div className="">
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-700">Task Queue - Click To Drop</h3>
+            <div className="min-h-[10px] bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-4">
+              {filteredCubes.filter(c => c.tickId === null).length === 0 ? (
+                <div className="flex items-center justify-center h-full text-gray-500 italic">
+                  {currentOperatorType 
+                    ? `No ${currentOperatorType} tasks in queue.`
+                    : activeFilters.length > 0 
+                      ? `No ${activeFilters.join(', ')} tasks in queue.`
+                      : "No tasks in queue. Create a new task to get started."
+                  }
                 </div>
-              ))}
+              ) : (
+                <div className="flex flex-wrap gap-4">
+                  {filteredCubes.filter(c => c.tickId === null).map(cube => (
+                    <div
+                      key={cube.id}
+                      onClick={() => moveCubeToTimeline(cube.id)}
+                      className="cursor-pointer hover:transform hover:scale-105 transition-transform"
+                      title="Click to move to timeline"
+                    >
+                      <DraggableCube 
+                        id={cube.id} 
+                        title={cube.title} 
+                        orderno={cube.orderno} 
+                        type={cube.type} 
+                        completed={cube.completed}
+                        onDelete={deleteCube} 
+                        onComplete={handleComplete} 
+                        users={users} 
+                        onAssignUser={handleAssignUser} 
+                        assignedUser={users.find(u => u.id === assignedUsers[cube.id]) || null}
+                        creatorUser={cube.creatorUser}
+                        orderData={cube.orderData}
+                        onMoveToQueue={moveCubeToQueue}
+                        isMissed={isTaskMissed(cube)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        </div>
+          </div>
         </div> 
       )}
 
       {activeTab === 'Order Filtering' && (
         <div className="mb-6">
-        
-        {/* Task Type Filters */}
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-700 mb-3">Filter by Task Type</h3>
-          <div className="flex flex-wrap gap-5">
-            <button
-               onClick={showAllTypesHandler}
-               className={`px-4 py-2 rounded-lg border-2 font-medium transition-colors text-2xl ${
-                 showAllTypes 
-                   ? 'bg-[#636255] text-white border-[#636255]'
-                   : 'bg-white text-[#636255] border-[#636255] hover:bg-gray-50'
-               }`}
-             >
-              All Types {showAllTypes && <span className="ml-2"></span>}
-            </button>
-            
-            {CUBE_TYPES.map(type => {
-              const isActive = activeFilters.includes(type);
-              
-              return (
+          {/* Only show type filters if operator doesn't have a specific type */}
+          {!currentOperatorType && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-700 mb-3">Filter by Task Type</h3>
+              <div className="flex flex-wrap gap-5">
                 <button
-                  key={type}
-                  onClick={() => toggleFilter(type)}
-                  className={`px-12 py-3.5 rounded-lg border-2 font-medium transition-colors text-2xl ${
-                    isActive
-                      ? `${getTypeColor(type)} border-current`
-                      : 'bg-white text-[#636255] border-[#636255] border-2 hover:bg-gray-50'
-                  }`}
-                >
-                  {type} {isActive && <span className="ml-2"></span>}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Designer Filters */}
-        {designers.length > 0 && (
-          <div>
-            <h3 className="text-lg font-semibold text-gray-700 mb-3">Filter by Designer</h3>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => scrollDesigners("left")}
-                className="p-2 bg-gray-200 rounded hover:bg-gray-300 flex-shrink-0"
-              >
-                &#8592;
-              </button>
-              
-              <div 
-                ref={designerScrollRef}
-                className="flex gap-5 overflow-x-auto scrollbar-hide flex-1"
-                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-              >
-                <button
-                  onClick={showAllUsersHandler}
-                  className={`px-4 py-2 rounded-lg border-2 font-medium transition-colors text-2xl flex-shrink-0 ${
-                    showAllUsers 
+                  onClick={showAllTypesHandler}
+                  className={`px-4 py-2 rounded-lg border-2 font-medium transition-colors text-2xl ${
+                    showAllTypes 
                       ? 'bg-[#636255] text-white border-[#636255]'
                       : 'bg-white text-[#636255] border-[#636255] hover:bg-gray-50'
                   }`}
                 >
-                  All Designers {showAllUsers && <span className="ml-2"></span>}
+                  All Types {showAllTypes && <span className="ml-2"></span>}
                 </button>
                 
-                {getFilteredDesigners().map(designer => {
-                  const isActive = activeUserFilters.includes(designer.id);
+                {CUBE_TYPES.map(type => {
+                  const isActive = activeFilters.includes(type);
                   
                   return (
                     <button
-                      key={designer.id}
-                      onClick={() => toggleUserFilter(designer.id)}
-                      className={`px-12 py-3.5 rounded-lg border-2 font-medium transition-colors text-2xl flex-shrink-0 ${
+                      key={type}
+                      onClick={() => toggleFilter(type)}
+                      className={`px-12 py-3.5 rounded-lg border-2 font-medium transition-colors text-2xl ${
                         isActive
-                          ? 'bg-[#636255] text-white border-[#636255]'
-                          : 'bg-white text-[#636255] border-[#636255] hover:bg-gray-50'
+                          ? `${getTypeColor(type)} border-current`
+                          : 'bg-white text-[#636255] border-[#636255] border-2 hover:bg-gray-50'
                       }`}
                     >
-                      {designer.name} {isActive && <span className="ml-2"></span>}
+                      {type} {isActive && <span className="ml-2"></span>}
                     </button>
                   );
                 })}
               </div>
-              
-              <button
-                onClick={() => scrollDesigners("right")}
-                className="p-2 bg-gray-200 rounded hover:bg-gray-300 flex-shrink-0"
-              >
-                &#8594;
-              </button>
             </div>
-          </div>
-        )}
+          )}
+
+          {/* Designer Filters */}
+          {designers.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold text-gray-700 mb-3">Filter by Designer</h3>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => scrollDesigners("left")}
+                  className="p-2 bg-gray-200 rounded hover:bg-gray-300 flex-shrink-0"
+                >
+                  &#8592;
+                </button>
+                
+                <div 
+                  ref={designerScrollRef}
+                  className="flex gap-5 overflow-x-auto scrollbar-hide flex-1"
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                >
+                  <button
+                    onClick={showAllUsersHandler}
+                    className={`px-4 py-2 rounded-lg border-2 font-medium transition-colors text-2xl flex-shrink-0 ${
+                      showAllUsers 
+                        ? 'bg-[#636255] text-white border-[#636255]'
+                        : 'bg-white text-[#636255] border-[#636255] hover:bg-gray-50'
+                    }`}
+                  >
+                    All Designers {showAllUsers && <span className="ml-2"></span>}
+                  </button>
+                  
+                  {getFilteredDesigners().map(designer => {
+                    const isActive = activeUserFilters.includes(designer.id);
+                    
+                    return (
+                      <button
+                        key={designer.id}
+                        onClick={() => toggleUserFilter(designer.id)}
+                        className={`px-12 py-3.5 rounded-lg border-2 font-medium transition-colors text-2xl flex-shrink-0 ${
+                          isActive
+                            ? 'bg-[#636255] text-white border-[#636255]'
+                            : 'bg-white text-[#636255] border-[#636255] hover:bg-gray-50'
+                        }`}
+                      >
+                        {designer.name} {isActive && <span className="ml-2"></span>}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <button
+                  onClick={() => scrollDesigners("right")}
+                  className="p-2 bg-gray-200 rounded hover:bg-gray-300 flex-shrink-0"
+                >
+                  &#8594;
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
       
       <div className='flex gap-20 mb-4'>
-        
         <div className="text-2xl font-semibold">
-           In Process: <span >{taskStats.total}</span>
+          In Process: <span>{taskStats.total}</span>
         </div>
         <div className="text-2xl font-semibold">
           Tasks Completed: <span className="text-green-600">{taskStats.completed}</span>
@@ -755,67 +760,65 @@ const TimeLineO: React.FC<UserTableProps> = ({ users, loading }) => {
         >
           <div className="min-w-max mt-70">
             {(() => {
-  const maxStack = Math.max(
-    ...TICKS.map((_, i) =>
-      filteredCubes.filter(c => c.tickId === `tick-${i}`).length
-    )
-  );
+              const maxStack = Math.max(
+                ...TICKS.map((_, i) =>
+                  filteredCubes.filter(c => c.tickId === `tick-${i}`).length
+                )
+              );
 
-  // Base height = 8rem (h-32)
-  // Add 8rem (128px) for every 2 cubes beyond the first two
-  const timelineHeight = 128 + Math.max(0, maxStack - 2) * 120;
+              const timelineHeight = 128 + Math.max(0, maxStack - 2) * 120;
 
-  return (
-    <div
-      className="flex justify-between items-end w-full min-w-[1200px] gap-[20px] transition-all duration-300 px-4"
-      style={{ height: `${timelineHeight}px` }}
-    >
-      {TICKS.map((_, i) => {
-        const tickId = `tick-${i}`;
-        const cubesInTick = filteredCubes.filter(c => c.tickId === tickId);
+              return (
+                <div
+                  className="flex justify-between items-end w-full min-w-[1200px] gap-[20px] transition-all duration-300 px-4"
+                  style={{ height: `${timelineHeight}px` }}
+                >
+                  {TICKS.map((_, i) => {
+                    const tickId = `tick-${i}`;
+                    const cubesInTick = filteredCubes.filter(c => c.tickId === tickId);
 
-        return (
-          <DroppableTick key={tickId} id={tickId}>
-            {cubesInTick.map((cube, index) => (
-              <div
-                key={cube.id}
-                className="absolute"
-                style={{ bottom: `${20 + index * 160}px` }}
-              >
-                <DraggableCube
-                  id={cube.id}
-                  title={cube.title}
-                  orderno={cube.orderno}
-                  type={cube.type}
-                  completed={cube.completed}
-                  onDelete={deleteCube}
-                  onComplete={handleComplete}
-                  users={users}
-                  onAssignUser={handleAssignUser}
-                  assignedUser={
-                    users.find(u => u.id === assignedUsers[cube.id]) || null
-                  }
-                  creatorUser={cube.creatorUser}
-                  orderData={cube.orderData}
-                  onMoveToQueue={moveCubeToQueue}
-                />
-              </div>
-            ))}
-          </DroppableTick>
-        );
-      })}
-    </div>
-  );
-})()}
+                    return (
+                      <DroppableTick key={tickId} id={tickId}>
+                        {cubesInTick.map((cube, index) => (
+                          <div
+                            key={cube.id}
+                            className="absolute"
+                            style={{ bottom: `${20 + index * 160}px` }}
+                          >
+                            <DraggableCube
+                              id={cube.id}
+                              title={cube.title}
+                              orderno={cube.orderno}
+                              type={cube.type}
+                              completed={cube.completed}
+                              onDelete={deleteCube}
+                              onComplete={handleComplete}
+                              users={users}
+                              onAssignUser={handleAssignUser}
+                              assignedUser={
+                                users.find(u => u.id === assignedUsers[cube.id]) || null
+                              }
+                              creatorUser={cube.creatorUser}
+                              orderData={cube.orderData}
+                              onMoveToQueue={moveCubeToQueue}
+                            />
+                          </div>
+                        ))}
+                      </DroppableTick>
+                    );
+                  })}
+                </div>
+              );
+            })()}
                     
             <div className="border-t-4 border-dashed border-gray-300 w-full min-w-[3700px]" />
 
             <div className="flex justify-between mt-2 w-full min-w-[1100px]">
               {TICKS.map((_, i) => (
-              <div key={i} className="text-xs text-center w-4 font-bold">
-                {i}:00
-              </div>
-            ))}
+                <div key={i} className="text-xs text-center w-4 font-bold">
+                  {i}:00
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -823,4 +826,5 @@ const TimeLineO: React.FC<UserTableProps> = ({ users, loading }) => {
     </div>
   )
 }
+
 export default TimeLineO;

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { createDiscountCode } from '@/app/actions/discountActions';
+import { supabase } from '@/lib/supabaseClient';
 
 type NewCodeFormProps = {
   onClose: () => void;
@@ -15,6 +16,45 @@ const NewCodeForm = ({ onClose }: NewCodeFormProps) => {
   const [expirationDate, setExpirationDate] = useState('');
   const [useLimit, setUseLimit] = useState('');
   const [loading, setLoading] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  // Fetch current user's role
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (!error && profile) setUserRole(profile.role);
+    };
+
+    fetchUserRole();
+  }, []);
+
+  // Block form for non-admins
+  if (userRole !== null && userRole !== 'Admin') {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
+        <div className="bg-white rounded-2xl shadow-xl p-8 border border-yellow-200 max-w-md w-full">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Access Denied</h2>
+          <p className="text-gray-700 mb-4">You do not have permission to create discount codes.</p>
+          <div className="flex justify-end mt-4">
+            <button 
+              onClick={onClose} 
+              className="px-6 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg font-medium transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Generate random code
   const generateRandomCode = () => {
@@ -30,7 +70,7 @@ const NewCodeForm = ({ onClose }: NewCodeFormProps) => {
     }
   }, [mode]);
 
-  // Get today’s date in YYYY-MM-DD
+  // Get today's date in YYYY-MM-DD
   const getTodayDate = () => new Date().toISOString().split('T')[0];
 
   const handleSubmit = async () => {
@@ -56,9 +96,9 @@ const NewCodeForm = ({ onClose }: NewCodeFormProps) => {
       onClose();
     } catch (err: any) {
       if (err.message.includes('exists') || err.message.includes('duplicate')) {
-        alert('⚠️ This code already exists. Try another one.');
+        alert(' This code already exists. Try another one.');
       } else {
-        alert('❌ Failed to create code: ' + err.message);
+        alert(' Failed to create code: ' + err.message);
       }
     } finally {
       setLoading(false);
@@ -71,24 +111,9 @@ const NewCodeForm = ({ onClose }: NewCodeFormProps) => {
         <h2 className="text-2xl font-bold text-gray-900 mb-6">Create Discount Code</h2>
 
         <div className="space-y-5">
-          {/* Mode */}
+         
           <div>
-            
-          </div>
-
-          {/* Code name */}
-          <div>
-            <label className="block text-sm font-medium "></label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value.toUpperCase())}
-              disabled={mode === 'Auto'}
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-              placeholder="Enter code or auto-generated"
-            />
-          </div>
-          
+            <label className="block text-sm font-medium mb-2">Code Generation Mode</label>
             <div className="flex gap-2">
               <button
                 onClick={() => setMode('Manual')}
@@ -111,6 +136,19 @@ const NewCodeForm = ({ onClose }: NewCodeFormProps) => {
                 Auto
               </button>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Discount Code *</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value.toUpperCase())}
+              disabled={mode === 'Auto'}
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+              placeholder="Enter code or auto-generated"
+            />
+          </div>
 
           {/* Type */}
           <div>
