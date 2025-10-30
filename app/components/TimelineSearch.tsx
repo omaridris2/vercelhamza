@@ -372,37 +372,37 @@ const TimelineSearch: React.FC<UserTableProps> = ({ users, loading }) => {
 
   return (
     <div>
-      {/* Date Navigation Header */}
-      <div className="flex flex-wrap gap-7 justify-center mb-5">
-          <button
-            onClick={showAllTypesHandler}
-            className={`px-4 py-2 rounded-lg border-2 font-medium transition-colors text-2xl ${
-              showAllTypes 
-                ? 'bg-[#636255] text-white border-[#636255]'
-                : 'bg-white text-[#636255] border-[#636255] hover:bg-gray-50'
-            }`}
-          >
-            All Types 
-          </button>
+      {/* Type Filters */}
+      <div className="flex items-center gap-4 mb-6 overflow-x-auto whitespace-nowrap px-4">
+        <button
+          onClick={showAllTypesHandler}
+          className={`px-4 py-2 rounded-lg border-2 font-medium transition-colors text-2xl flex-shrink-0 ${
+            showAllTypes 
+              ? 'bg-[#636255] text-white border-[#636255]'
+              : 'bg-white text-[#636255] border-[#636255] hover:bg-gray-50'
+          }`}
+        >
+          All Types 
+        </button>
+        
+        {CUBE_TYPES.map(type => {
+          const isActive = activeFilters.includes(type);
           
-          {CUBE_TYPES.map(type => {
-            const isActive = activeFilters.includes(type);
-            
-            return (
-              <button
-                key={type}
-                onClick={() => toggleFilter(type)}
-                className={`px-12 py-3.5 rounded-lg border-2 font-medium transition-colors text-2xl ${
-                  isActive
-                    ? `${getTypeColor(type)} border-current`
-                    : 'bg-white text-[#636255] border-[#636255] border-2 hover:bg-gray-50'
-                }`}
-              >
-                {type} 
-              </button>
-            );
-          })}
-        </div>
+          return (
+            <button
+              key={type}
+              onClick={() => toggleFilter(type)}
+              className={`px-12 py-3.5 rounded-lg border-2 font-medium transition-colors text-2xl flex-shrink-0 ${
+                isActive
+                  ? `${getTypeColor(type)} border-current`
+                  : 'bg-white text-[#636255] border-[#636255] hover:bg-gray-50'
+              }`}
+            >
+              {type}
+            </button>
+          );
+        })}
+      </div>
       <div className="p-4 mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button

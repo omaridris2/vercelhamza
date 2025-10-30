@@ -21,14 +21,15 @@ interface UserTableProps {
   loading?: boolean;
 }
 
-type CubeType = "Roland" | "Digital" | "Sing" | "Laser" | "Wood" | "Reprint";
+type CubeType = "Roland" | "Digital" | "Sing" | "Laser" | "Wood" | "Reprint" |"UV";
 
-const CUBE_TYPES: CubeType[] = ["Roland", "Digital", "Sing", "Laser", "Wood", "Reprint"];
+const CUBE_TYPES: CubeType[] = ["Roland", "Digital", "Sing", "Laser", "Wood", "Reprint" ,"UV"];
 
 const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
   const [activeTab, setActiveTab] = useState<'task creation' | 'task tracking'>('task creation');
   const scrollRef = useRef<HTMLDivElement>(null);
   const designerScrollRef = useRef<HTMLDivElement>(null);
+  const typeScrollRef = useRef<HTMLDivElement>(null);
   
   const [activeFilters, setActiveFilters] = useState<CubeType[]>([]);
   const [showAllTypes, setShowAllTypes] = useState(true);
@@ -39,7 +40,6 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   
-  // Add reprint state tracking
   const [reprintCubes, setReprintCubes] = useState<Set<string>>(new Set());
 
   const scroll = (direction: "left" | "right") => {
@@ -53,9 +53,18 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
     }
   };
 
-  // ✅ Updated: Exclude reprint tasks from being marked as missed
+  const scrollTypes = (direction: "left" | "right") => {
+    if (typeScrollRef.current) {
+      const scrollAmount = 300;
+      if (direction === "left") {
+        typeScrollRef.current.scrollBy({ left: -scrollAmount, behavior: "smooth" });
+      } else {
+        typeScrollRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+      }
+    }
+  };
+
   const isTaskMissed = (cube: any) => {
-    // Don't mark reprint tasks as missed
     if (reprintCubes.has(cube.id)) return false;
     
     if (!cube.orderData?.deadline) return false;
@@ -63,112 +72,111 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
     const deadline = new Date(cube.orderData.deadline);
     return deadline.getTime() - now.getTime() < 0;
   };
+
   const handleMarkAsPrint = async (cubeId: string) => {
-  // Update local state
-  setCubes(prev =>
-    prev.map(cube =>
-      cube.id === cubeId
-        ? { 
-            ...cube,
-            completed: false, // Clear completed status
-            orderData: { 
-              ...cube.orderData, 
-              status: 'print',
-              completed_at: null
+    setCubes(prev =>
+      prev.map(cube =>
+        cube.id === cubeId
+          ? { 
+              ...cube,
+              completed: false,
+              orderData: { 
+                ...cube.orderData, 
+                status: 'print',
+                completed_at: null
+              }
             }
-          }
-        : cube
-    )
-  );
-  
-  // Update database
-  await updateOrderStatus(cubeId, 'print');
-  console.log(`Marked cube ${cubeId} as Print`);
-};
+          : cube
+      )
+    );
+    
+    await updateOrderStatus(cubeId, 'print');
+    console.log(`Marked cube ${cubeId} as Print`);
+  };
 
-const handleMarkAsLamination = async (cubeId: string) => {
-  setCubes(prev =>
-    prev.map(cube =>
-      cube.id === cubeId
-        ? { 
-            ...cube,
-            completed: false,
-            orderData: { 
-              ...cube.orderData, 
-              status: 'lamination',
-              completed_at: null
+  const handleMarkAsLamination = async (cubeId: string) => {
+    setCubes(prev =>
+      prev.map(cube =>
+        cube.id === cubeId
+          ? { 
+              ...cube,
+              completed: false,
+              orderData: { 
+                ...cube.orderData, 
+                status: 'lamination',
+                completed_at: null
+              }
             }
-          }
-        : cube
-    )
-  );
-  
-  await updateOrderStatus(cubeId, 'lamination');
-  console.log(`Marked cube ${cubeId} as Lamination`);
-};
+          : cube
+      )
+    );
+    
+    await updateOrderStatus(cubeId, 'lamination');
+    console.log(`Marked cube ${cubeId} as Lamination`);
+  };
 
-const handleMarkAsCut = async (cubeId: string) => {
-  setCubes(prev =>
-    prev.map(cube =>
-      cube.id === cubeId
-        ? { 
-            ...cube,
-            completed: false,
-            orderData: { 
-              ...cube.orderData, 
-              status: 'cut',
-              completed_at: null
+  const handleMarkAsCut = async (cubeId: string) => {
+    setCubes(prev =>
+      prev.map(cube =>
+        cube.id === cubeId
+          ? { 
+              ...cube,
+              completed: false,
+              orderData: { 
+                ...cube.orderData, 
+                status: 'cut',
+                completed_at: null
+              }
             }
-          }
-        : cube
-    )
-  );
-  
-  await updateOrderStatus(cubeId, 'cut');
-  console.log(`Marked cube ${cubeId} as Cut`);
-};
+          : cube
+      )
+    );
+    
+    await updateOrderStatus(cubeId, 'cut');
+    console.log(`Marked cube ${cubeId} as Cut`);
+  };
 
-const handleMarkAsFinishing = async (cubeId: string) => {
-  setCubes(prev =>
-    prev.map(cube =>
-      cube.id === cubeId
-        ? { 
-            ...cube,
-            completed: false,
-            orderData: { 
-              ...cube.orderData, 
-              status: 'finishing',
-              completed_at: null
+  const handleMarkAsFinishing = async (cubeId: string) => {
+    setCubes(prev =>
+      prev.map(cube =>
+        cube.id === cubeId
+          ? { 
+              ...cube,
+              completed: false,
+              orderData: { 
+                ...cube.orderData, 
+                status: 'finishing',
+                completed_at: null
+              }
             }
-          }
-        : cube
-    )
-  );
-  
-  await updateOrderStatus(cubeId, 'finishing');
-  console.log(`Marked cube ${cubeId} as Finishing`);
-};
+          : cube
+      )
+    );
+    
+    await updateOrderStatus(cubeId, 'finishing');
+    console.log(`Marked cube ${cubeId} as Finishing`);
+  };
 
-const handleMarkAsInstallation = async (cubeId: string) => {
-  setCubes(prev =>
-    prev.map(cube =>
-      cube.id === cubeId
-        ? { 
-            ...cube,
-            completed: false,
-            orderData: { 
-              ...cube.orderData, 
-              status: 'installation',
-              completed_at: null
+  const handleMarkAsInstallation = async (cubeId: string) => {
+    setCubes(prev =>
+      prev.map(cube =>
+        cube.id === cubeId
+          ? { 
+              ...cube,
+              completed: false,
+              orderData: { 
+                ...cube.orderData, 
+                status: 'installation',
+                completed_at: null
+              }
             }
-          }
-        : cube
-    )
-  );
-  
-  await updateOrderStatus(cubeId, 'installation');
-  console.log(`Marked cube ${cubeId} as Installation`);
-};
+          : cube
+      )
+    );
+    
+    await updateOrderStatus(cubeId, 'installation');
+    console.log(`Marked cube ${cubeId} as Installation`);
+  };
 
   const scrollDesigners = (direction: "left" | "right") => {
     if (designerScrollRef.current) {
@@ -185,7 +193,6 @@ const handleMarkAsInstallation = async (cubeId: string) => {
     const cube = cubes.find(c => c.id === cubeId);
     if (!cube) return;
     
-    // ✅ Allow reprint tasks to be moved
     if (!reprintCubes.has(cubeId) && (cube.completed || isTaskMissed(cube))) {
       return;
     }
@@ -201,25 +208,22 @@ const handleMarkAsInstallation = async (cubeId: string) => {
     await updateOrderPosition(cubeId, null, null);
   };
 
-  // ✅ Updated: Mark as reprint function with database update
   const handleMarkAsReprint = async (cubeId: string) => {
     setReprintCubes(prev => new Set(prev).add(cubeId));
     
-    // Update database status to reprint
     await updateOrderStatus(cubeId, 'reprint');
     
-    // Update local state - clear completed status when marking as reprint
     setCubes(prev =>
       prev.map(cube =>
         cube.id === cubeId
           ? { 
               ...cube, 
               type: 'Reprint',
-              completed: false,  // ✅ Clear completed flag
+              completed: false,
               orderData: { 
                 ...cube.orderData, 
                 status: 'reprint',
-                completed_at: null  // ✅ Clear completed timestamp
+                completed_at: null
               }
             }
           : cube
@@ -240,7 +244,7 @@ const handleMarkAsInstallation = async (cubeId: string) => {
     assignedUserId?: string | null;
     orderData?: any;
     creatorUser: User | null;
-timelineDate?: string | null;
+    timelineDate?: string | null;
     customerName?: string | null;
     orderNo?: number | null;
     createdAt?: string;
@@ -280,7 +284,6 @@ timelineDate?: string | null;
     return date.toDateString() === today.toDateString();
   }, []);
 
-  // ✅ Updated: Load orders and initialize reprint status from database
   const loadOrders = useCallback(async () => {
     console.log('Loading orders for date:', formatDateForDB(selectedDate));
 
@@ -319,7 +322,6 @@ timelineDate?: string | null;
 
       setCubes(visibleCubes);
 
-      // ✅ Initialize reprint cubes from database status
       const reprintIds = new Set(
         visibleCubes
           .filter((cube: any) => cube.orderData?.status === 'reprint')
@@ -454,36 +456,32 @@ timelineDate?: string | null;
     }
   };
 
-  // ✅ Updated: Handle completing tasks including reprints
-const handleComplete = async (id: string) => {
-  // Remove from reprint set if it was a reprint
-  if (reprintCubes.has(id)) {
-    setReprintCubes(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(id);
-      return newSet;
-    });
-  }
+  const handleComplete = async (id: string) => {
+    if (reprintCubes.has(id)) {
+      setReprintCubes(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
+    }
 
-  // Update local state
-  setCubes(prev =>
-    prev.map(cube =>
-      cube.id === id 
-        ? { 
-            ...cube, 
-            completed: true,
-            orderData: {
-              ...cube.orderData,
-              status: 'completed'
-            }
-          } 
-        : cube
-    )
-  );
-  
-  // Update database
-  await updateOrderStatus(id, 'completed');
-};
+    setCubes(prev =>
+      prev.map(cube =>
+        cube.id === id 
+          ? { 
+              ...cube, 
+              completed: true,
+              orderData: {
+                ...cube.orderData,
+                status: 'completed'
+              }
+            } 
+          : cube
+      )
+    );
+    
+    await updateOrderStatus(id, 'completed');
+  };
 
   const deleteCube = async (id: string) => {
     try {
@@ -505,7 +503,6 @@ const handleComplete = async (id: string) => {
     if (over) {
       const cube = cubes.find(c => c.id === active.id);
       
-      // ✅ Allow reprint tasks to be dragged, block others if completed/missed
       if (cube && !reprintCubes.has(cube.id) && (cube.completed || isTaskMissed(cube))) {
         return;
       }
@@ -585,46 +582,44 @@ const handleComplete = async (id: string) => {
 
   const filteredCubes = getFilteredCubes();
 
-  // ✅ Updated: Task stats now properly handle reprint status
   const getTaskStats = () => {
-  const now = new Date();
-  const oneHourInMs = 60 * 60 * 1000;
+    const now = new Date();
+    const oneHourInMs = 60 * 60 * 1000;
 
-  const placedCubes = filteredCubes.filter(cube => cube.tickId !== null);
+    const placedCubes = filteredCubes.filter(cube => cube.tickId !== null);
 
-  const stats = {
-    total: placedCubes.length,
-    completed: 0,
-    urgent: 0,
-    missed: 0,
-    reprint: 0,
-    inProcess: 0  // ✅ Add this
-  };
+    const stats = {
+      total: placedCubes.length,
+      completed: 0,
+      urgent: 0,
+      missed: 0,
+      reprint: 0,
+      inProcess: 0
+    };
 
-  placedCubes.forEach(cube => {
-    // Check reprint first (highest priority)
-    if (reprintCubes.has(cube.id)) {
-      stats.reprint++;
-    } else if (cube.completed) {
-      stats.completed++;
-    } else if (cube.orderData?.deadline) {
-      const deadline = new Date(cube.orderData.deadline);
-      const timeUntilDeadline = deadline.getTime() - now.getTime();
+    placedCubes.forEach(cube => {
+      if (reprintCubes.has(cube.id)) {
+        stats.reprint++;
+      } else if (cube.completed) {
+        stats.completed++;
+      } else if (cube.orderData?.deadline) {
+        const deadline = new Date(cube.orderData.deadline);
+        const timeUntilDeadline = deadline.getTime() - now.getTime();
 
-      if (timeUntilDeadline < 0) {
-        stats.missed++;
-      } else if (timeUntilDeadline <= oneHourInMs) {
-        stats.urgent++;
+        if (timeUntilDeadline < 0) {
+          stats.missed++;
+        } else if (timeUntilDeadline <= oneHourInMs) {
+          stats.urgent++;
+        } else {
+          stats.inProcess++;
+        }
       } else {
-        stats.inProcess++;  // ✅ Active task
+        stats.inProcess++;
       }
-    } else {
-      stats.inProcess++;  // ✅ Task with no deadline
-    }
-  });
+    });
 
-  return stats;
-};
+    return stats;
+  };
 
   const taskStats = getTaskStats();
 
@@ -660,7 +655,6 @@ const handleComplete = async (id: string) => {
 
   return (
     <div>
-      {/* date navigation */}
       <div className="p-4 mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
@@ -705,7 +699,6 @@ const handleComplete = async (id: string) => {
         </div>
       </div>
 
-      {/* Tab Navigation */}
       <div className="flex items-center gap-4 mb-6">
         <button
           onClick={() => {
@@ -738,12 +731,11 @@ const handleComplete = async (id: string) => {
       {activeTab === 'task creation' && (
         <div className="">
          <NewJobForm
-  userId={users?.[0]?.id || ''}
-  onJobCreated={(newJob) => {
-    setCubes((prev) => [...prev, newJob]); // ✅ instantly append to UI
-  }}
-/>
-
+            userId={users?.[0]?.id || ''}
+            onJobCreated={(newJob) => {
+              setCubes((prev) => [...prev, newJob]);
+            }}
+          />
          
           <div className="mb-8">
             <h3 className="text-lg font-semibold text-gray-700">Task Queue - Click To Drop</h3>
@@ -786,8 +778,6 @@ const handleComplete = async (id: string) => {
                         onMarkAsCut={(id) => handleMarkAsCut(id)}
                         onMarkAsFinishing={(id) => handleMarkAsFinishing(id)}
                         onMarkAsInstallation={(id) => handleMarkAsInstallation(id)}
-                        
-                        
                       />
                     </div>
                   ))}
@@ -800,42 +790,60 @@ const handleComplete = async (id: string) => {
 
       {activeTab === 'task tracking' && (
         <div className="mb-6">
-          {/* Task Type Filters */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-gray-700 mb-3">Filter by Task Type</h3>
-            <div className="flex flex-wrap gap-5">
+            <div className="flex items-center gap-4">
               <button
-                onClick={showAllTypesHandler}
-                className={`px-4 py-2 rounded-lg border-2 font-medium transition-colors text-2xl ${
-                  showAllTypes 
-                    ? 'bg-[#636255] text-white border-[#636255]'
-                    : 'bg-white text-[#636255] border-[#636255] hover:bg-gray-50'
-                }`}
+                onClick={() => scrollTypes("left")}
+                className="p-2 bg-gray-200 rounded hover:bg-gray-300 flex-shrink-0"
               >
-                All Types {showAllTypes && <span className="ml-2"></span>}
+                &#8592;
               </button>
               
-              {CUBE_TYPES.map(type => {
-                const isActive = activeFilters.includes(type);
+              <div 
+                ref={typeScrollRef}
+                className="flex gap-5 overflow-x-auto scrollbar-hide flex-1"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              >
+                <button
+                  onClick={showAllTypesHandler}
+                  className={`px-4 py-2 rounded-lg border-2 font-medium transition-colors text-2xl flex-shrink-0 ${
+                    showAllTypes 
+                      ? 'bg-[#636255] text-white border-[#636255]'
+                      : 'bg-white text-[#636255] border-[#636255] hover:bg-gray-50'
+                  }`}
+                >
+                  All Types {showAllTypes && <span className="ml-2"></span>}
+                </button>
                 
-                return (
-                  <button
-                    key={type}
-                    onClick={() => toggleFilter(type)}
-                    className={`px-12 py-3.5 rounded-lg border-2 font-medium transition-colors text-2xl ${
-                      isActive
-                        ? `${getTypeColor(type)} border-current`
-                        : 'bg-white text-[#636255] border-[#636255] border-2 hover:bg-gray-50'
-                    }`}
-                  >
-                    {type} {isActive && <span className="ml-2"></span>}
-                  </button>
-                );
-              })}
+                {CUBE_TYPES.map(type => {
+                  const isActive = activeFilters.includes(type);
+                  
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => toggleFilter(type)}
+                      className={`px-12 py-3.5 rounded-lg border-2 font-medium transition-colors text-2xl flex-shrink-0 ${
+                        isActive
+                          ? `${getTypeColor(type)} border-current`
+                          : 'bg-white text-[#636255] border-[#636255] border-2 hover:bg-gray-50'
+                      }`}
+                    >
+                      {type} {isActive && <span className="ml-2"></span>}
+                    </button>
+                  );
+                })}
+              </div>
+              
+              <button
+                onClick={() => scrollTypes("right")}
+                className="p-2 bg-gray-200 rounded hover:bg-gray-300 flex-shrink-0"
+              >
+                &#8594;
+              </button>
             </div>
           </div>
 
-          {/* Designer Filters */}
           {designers.length > 0 && (
             <div>
               <h3 className="text-lg font-semibold text-gray-700 mb-3">Filter by Designer</h3>
@@ -895,20 +903,20 @@ const handleComplete = async (id: string) => {
       )}
       
       <div className='flex gap-20 mb-4'>
-  <div className="text-2xl font-semibold">
-    In Process: <span>{taskStats.inProcess}</span>
-  </div>
-  <div className="text-2xl font-semibold">
-    Tasks Completed: <span className="text-green-600">{taskStats.completed}</span>
-  </div>
-  
-  <div className="text-2xl font-semibold">
-    Missed: <span className="text-red-600">{taskStats.missed}</span>
-  </div>
-  <div className="text-2xl font-semibold">
-    Reprint: <span className="text-gray-600">{taskStats.reprint}</span>
-  </div>
-</div>
+        <div className="text-2xl font-semibold">
+          In Process: <span>{taskStats.inProcess}</span>
+        </div>
+        <div className="text-2xl font-semibold">
+          Tasks Completed: <span className="text-green-600">{taskStats.completed}</span>
+        </div>
+        
+        <div className="text-2xl font-semibold">
+          Missed: <span className="text-red-600">{taskStats.missed}</span>
+        </div>
+        <div className="text-2xl font-semibold">
+          Reprint: <span className="text-gray-600">{taskStats.reprint}</span>
+        </div>
+      </div>
 
       <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCorners}>
         <div className="flex justify-between items-center m-4">

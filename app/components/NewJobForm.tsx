@@ -95,6 +95,8 @@ const NewJobForm = ({ userId, onJobCreated }: NewJobFormProps) => {
               type="text"
               value={orderno}
               onChange={(e) => setOrderno(e.target.value)}
+              pattern="[0-9]*"
+              inputMode="numeric"
               className="w-full px-6 py-4 border-2 border-black rounded-lg text-lg min-w-[250px]"
               placeholder="Order number"
             />

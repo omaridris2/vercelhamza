@@ -316,16 +316,7 @@ const Operator = () => {
               )}
             </div>
 
-            <button
-              onClick={() => setShowLogoutConfirm(true)}
-              className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-              title="Logout"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              Logout
-            </button>
+            
 
             <img
               src="/logo.svg"
@@ -378,6 +369,16 @@ const Operator = () => {
                 <div className="font-semibold">Printing Types</div>
                 <div className="text-sm opacity-80">Manage print categories</div>
               </button>
+              <button
+              onClick={() => setShowLogoutConfirm(true)}
+              className="mt-109 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+              title="Logout"
+            >
+              <svg className=" w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              Logout
+            </button>
             </div>
           </div>
         </div>
