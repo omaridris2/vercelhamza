@@ -32,9 +32,10 @@ type CubeType =
   | "Sing"
   | "Laser"
   | "Wood"
-  | "Reprint";
+  | "Reprint"
+  | "UV";
 
-const CUBE_TYPES: CubeType[] = ["Roland", "Digital", "Sing", "Laser", "Wood", "Reprint"];
+const CUBE_TYPES: CubeType[] = ["Roland", "Digital", "Sing", "Laser", "Wood", "Reprint", "UV"];
 
 const TimelineSearch: React.FC<UserTableProps> = ({ users, loading }) => {
   const scrollRef = useRef<HTMLDivElement>(null);

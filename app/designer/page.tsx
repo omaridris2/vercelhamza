@@ -22,7 +22,7 @@ export default function DesignerPage() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const [activeSection, setActiveSection] = useState<
-     'order-tracking' | 'Roland' | 'Digital' | 'Sign' | 'Laser' | 'Wood' 
+     'order-tracking' | 'Roland' | 'Digital' | 'Sign' | 'Laser' | 'Wood' | 'UV'
   >('order-tracking');
 
   const handleSectionChange = (section: typeof activeSection) => {
@@ -79,9 +79,9 @@ export default function DesignerPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header with Hamburger and Logo */}
+      
       <div className="relative top-6 left-0 right-0 flex justify-between items-center px-6 z-40">
-        {/* Three-dot button on the left */}
+        
         <button
           onClick={() => setIsDrawerOpen(true)}
           className="flex flex-row gap-1.5 p-3 duration-200"
@@ -91,7 +91,7 @@ export default function DesignerPage() {
           <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
         </button>
 
-        {/* Right side with profile info, logout button and logo */}
+      
         <div className="flex items-center gap-4">
           <div className="text-right">
             <div className="text-lg font-bold text-gray-800">
@@ -102,16 +102,7 @@ export default function DesignerPage() {
             </div>
           </div>
 
-          <button
-            onClick={() => setShowLogoutConfirm(true)}
-            className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-            title="Logout"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            Logout
-          </button>
+          
 
           <img
             src="/logo.svg"
@@ -123,7 +114,6 @@ export default function DesignerPage() {
         </div>
       </div>
 
-      {/* Overlay */}
       {isDrawerOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-300"
@@ -131,13 +121,14 @@ export default function DesignerPage() {
         ></div>
       )}
 
-      {/* Drawer Sidebar */}
+      {/* sidebar */}
       <div
         className={`fixed left-0 top-0 h-full w-80 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${
           isDrawerOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="p-6">
+        
+        <div className="p-6 h-full overflow-y-auto">
           <div className="flex justify-between items-center mb-8">
             <h2 className="text-xl font-bold text-gray-900">Navigation</h2>
             <button
@@ -256,6 +247,34 @@ export default function DesignerPage() {
                 </div>
               </div>
             </button>
+
+
+            <button
+              onClick={() => handleSectionChange('UV')}
+              className={`w-full text-left p-4 rounded-xl transition-all duration-200 ${
+                activeSection === 'UV'
+                  ? 'bg-[#636255] text-white shadow-lg'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div>
+                  <div className="font-semibold">UV Products</div>
+                  <div className="text-sm opacity-80">Browse our UV Products</div>
+                </div>
+              </div>
+            </button>
+
+            <button
+            onClick={() => setShowLogoutConfirm(true)}
+            className=" px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+            title="Logout"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Logout
+          </button>
           </div>
         </div>
       </div>
@@ -362,6 +381,12 @@ export default function DesignerPage() {
           <div>
             <div className="mb-8"></div>
             <MyCarousel1 type='Wood' />
+          </div>
+        )}
+        {activeSection === 'UV' && (
+          <div>
+            <div className="mb-8"></div>
+            <MyCarousel1 type='UV' />
           </div>
         )}
       </div>

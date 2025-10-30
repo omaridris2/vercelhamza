@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-type CubeType = "Roland" | "Digital" | "Sign" | "Laser" | "Wood" | "Reprint";
+type CubeType = "Roland" | "Digital" | "Sign" | "Laser" | "Wood" | "Reprint" | "UV";
 type Menu = {
   id?: number;
   name: string;
@@ -32,7 +32,7 @@ type AddPrintFormProps = {
   productData?: ProductData;
 };
 
-const CUBE_TYPES: CubeType[] = ["Roland", "Digital", "Sign", "Laser", "Wood", "Reprint"];
+const CUBE_TYPES: CubeType[] = ["Roland", "Digital", "Sign", "Laser", "Wood", "Reprint", "UV"];
 
 const AddPrintForm = ({ onClose, onSuccess, editMode = false, productData }: AddPrintFormProps) => {
   const [name, setName] = useState('');

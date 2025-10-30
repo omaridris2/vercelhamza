@@ -19,7 +19,7 @@ interface Product {
 }
 
 interface MyCarousel1Props {
-  type: "Roland" | "Digital" | "Sign" | "Laser" | "Wood" | "Reprint";
+  type: "Roland" | "Digital" | "Sign" | "Laser" | "Wood" | "Reprint" | "UV";
 }
 
 const MyCarousel1: React.FC<MyCarousel1Props> = ({ type }) => {
