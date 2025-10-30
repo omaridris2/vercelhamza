@@ -11,7 +11,9 @@ const NewJobForm = ({ userId, onJobCreated }: NewJobFormProps) => {
   const [orderno, setOrderno] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [type, setType] = useState('');
-  const [deadline, setDeadline] = useState<string>('');
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedHour, setSelectedHour] = useState<string>('');
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -28,12 +30,12 @@ const NewJobForm = ({ userId, onJobCreated }: NewJobFormProps) => {
       const res = await fetch('/api/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+          body: JSON.stringify({
           user_id: userId,
           orderno,
           customer_name: customerName,
           type,
-          deadline,
+          deadline: selectedDate && selectedHour ? `${selectedDate}T${selectedHour}:00` : '',
         }),
       });
 
@@ -64,7 +66,8 @@ const NewJobForm = ({ userId, onJobCreated }: NewJobFormProps) => {
         setOrderno('');
         setCustomerName('');
         setType('');
-        setDeadline('');
+        setSelectedDate('');
+        setSelectedHour('');
       } else {
         setMessage(result.error || 'Failed to create order.');
       }
@@ -102,14 +105,51 @@ const NewJobForm = ({ userId, onJobCreated }: NewJobFormProps) => {
             />
           </div>
 
-          <div>
-            <input
-              type="datetime-local"
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              min={new Date().toISOString().slice(0, 16)}
-              className="w-full px-6 py-4 border-2 border-black rounded-lg text-lg min-w-[250px]"
-            />
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
+              className="w-full px-6 py-4 border-2 border-black rounded-lg text-lg min-w-[250px] text-left"
+            >
+              {selectedDate && selectedHour 
+                ? `${new Date(selectedDate).toLocaleDateString()} - ${selectedHour}:00`
+                : "Select Deadline"}
+            </button>
+            
+            {isDatePickerOpen && (
+              <div className="absolute z-50 mt-2 w-full bg-white border-2 border-black rounded-lg shadow-lg">
+                <div className="p-4">
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full mb-4 px-4 py-2 border-2 border-black rounded-lg"
+                  />
+                  <div className="grid grid-cols-6 gap-2">
+                    {Array.from({ length: 24 }, (_, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => {
+                          setSelectedHour(i.toString().padStart(2, '0'));
+                          setIsDatePickerOpen(false);
+                        }}
+                        className={`px-2 py-2 border rounded-lg text-center ${
+                          selectedHour === i.toString().padStart(2, '0')
+                            ? 'bg-[#636255] text-white'
+                            : 'hover:bg-gray-100'
+                        }`}
+                      >
+                        <span className="inline-block w-full text-center">
+                          {i.toString().padStart(2, '0')}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div>
@@ -152,8 +192,6 @@ const NewJobForm = ({ userId, onJobCreated }: NewJobFormProps) => {
             )}
           </button>
         </div>
-
-        {/* Message moved outside flex container */}
         {message && (
           <div className="mt-4 text-center text-lg mb-5">
             {message}
