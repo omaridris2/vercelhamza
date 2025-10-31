@@ -180,13 +180,7 @@ const TimeLineO: React.FC<UserTableProps> = ({
         };
       });
 
-      // FILTER BY OPERATOR TYPE
-      if (currentOperatorType && currentOperatorType !== 'All') {
-        console.log('Filtering orders by type:', currentOperatorType);
-        allOrderCubes = allOrderCubes.filter((cube: any) => 
-          cube.type === currentOperatorType
-        );
-      }
+      
 
       const visibleCubes = allOrderCubes.filter(
         (cube: any) =>

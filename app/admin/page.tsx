@@ -341,17 +341,7 @@ const AdminTimelinePage = () => {
                 <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Management</div>
               </div>
 
-              <button
-                onClick={() => handleSectionChange('printing-types')}
-                className={`w-full text-left p-4 rounded-lg transition-all duration-200 ${
-                  activeSection === 'printing-types' 
-                    ? 'bg-[#636255] text-white shadow-lg' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <div className="font-semibold">Printing Types</div>
-                <div className="text-sm opacity-80">Manage print categories</div>
-              </button>
+              
 
               <button
                 onClick={() => handleSectionChange('discount-codes')}
