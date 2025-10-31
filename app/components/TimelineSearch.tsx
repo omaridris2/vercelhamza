@@ -376,7 +376,7 @@ const TimelineSearch: React.FC<UserTableProps> = ({ users, loading }) => {
       <div className="flex items-center gap-4 mb-6 overflow-x-auto whitespace-nowrap px-4">
         <button
           onClick={showAllTypesHandler}
-          className={`px-4 py-2 rounded-lg border-2 font-medium transition-colors text-2xl flex-shrink-0 ${
+          className={`px-4 py-3.5 rounded-lg border-2 font-medium transition-colors text-2xl flex-shrink-0 ${
             showAllTypes 
               ? 'bg-[#636255] text-white border-[#636255]'
               : 'bg-white text-[#636255] border-[#636255] hover:bg-gray-50'

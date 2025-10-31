@@ -60,7 +60,7 @@ const AdminTimelinePage = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   
   const TICKS = Array.from({ length: 24 });
-  const [activeSection, setActiveSection] = useState<'dashboard' | 'printing-types' | 'discount-codes' | 'user-accounts' | 'settings'>('dashboard');
+  const [activeSection, setActiveSection] = useState<'dashboard' | 'printing-types' | 'discount-codes' | 'user-accounts' | 'settings' | 'roland' | 'digital' | 'sign' | 'laser' | 'wood' | 'reprint' | 'uv'>('dashboard');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const [profilesLoading, setProfilesLoading] = useState(true);
@@ -320,7 +320,7 @@ const AdminTimelinePage = () => {
         </div>
         
         {/* Left Drawer */}
-        <div className={`fixed left-0 top-0 h-full w-80 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${
+        <div className={`fixed left-0 top-0 h-full w-80 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out overflow-y-auto ${
           isDrawerOpen ? 'translate-x-0' : '-translate-x-full'
         }`}>
           <div className="p-6">
@@ -337,17 +337,9 @@ const AdminTimelinePage = () => {
             </div>
             
             <div className="space-y-3">
-              <button
-                onClick={() => handleSectionChange('dashboard')}
-                className={`w-full text-left p-4 rounded-lg transition-all duration-200 ${
-                  activeSection === 'dashboard' 
-                    ? 'bg-[#636255] text-white shadow-lg' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <div className="font-semibold">Dashboard</div>
-                <div className="text-sm opacity-80">Overview and timeline</div>
-              </button>
+              <div className="pt-4 pb-2">
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Management</div>
+              </div>
 
               <button
                 onClick={() => handleSectionChange('printing-types')}
@@ -386,9 +378,99 @@ const AdminTimelinePage = () => {
               </button>
               
 
+              
+              <button
+                onClick={() => handleSectionChange('dashboard')}
+                className={`w-full text-left p-4 rounded-lg transition-all duration-200 ${
+                  activeSection === 'dashboard' 
+                    ? 'bg-[#636255] text-white shadow-lg' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <div className="font-semibold">Dashboard</div>
+                <div className="text-sm opacity-80">Overview and timeline</div>
+              </button>
+
+              <div className="pt-4 pb-2">
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Product Types</div>
+              </div>
+
+              <button
+                onClick={() => handleSectionChange('roland')}
+                className={`w-full text-left p-4 rounded-lg transition-all duration-200 ${
+                  activeSection === 'roland' 
+                    ? 'bg-[#636255] text-white shadow-lg' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <div className="font-semibold">Roland</div>
+                <div className="text-sm opacity-80">Roland products</div>
+              </button>
+
+              <button
+                onClick={() => handleSectionChange('digital')}
+                className={`w-full text-left p-4 rounded-lg transition-all duration-200 ${
+                  activeSection === 'digital' 
+                    ? 'bg-[#636255] text-white shadow-lg' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <div className="font-semibold">Digital</div>
+                <div className="text-sm opacity-80">Digital products</div>
+              </button>
+
+              <button
+                onClick={() => handleSectionChange('sign')}
+                className={`w-full text-left p-4 rounded-lg transition-all duration-200 ${
+                  activeSection === 'sign' 
+                    ? 'bg-[#636255] text-white shadow-lg' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <div className="font-semibold">Sign</div>
+                <div className="text-sm opacity-80">Sign products</div>
+              </button>
+
+              <button
+                onClick={() => handleSectionChange('laser')}
+                className={`w-full text-left p-4 rounded-lg transition-all duration-200 ${
+                  activeSection === 'laser' 
+                    ? 'bg-[#636255] text-white shadow-lg' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <div className="font-semibold">Laser</div>
+                <div className="text-sm opacity-80">Laser products</div>
+              </button>
+
+              <button
+                onClick={() => handleSectionChange('wood')}
+                className={`w-full text-left p-4 rounded-lg transition-all duration-200 ${
+                  activeSection === 'wood' 
+                    ? 'bg-[#636255] text-white shadow-lg' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <div className="font-semibold">Wood</div>
+                <div className="text-sm opacity-80">Wood products</div>
+              </button>
+
+             
+
+              <button
+                onClick={() => handleSectionChange('uv')}
+                className={`w-full text-left p-4 rounded-lg transition-all duration-200 ${
+                  activeSection === 'uv' 
+                    ? 'bg-[#636255] text-white shadow-lg' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <div className="font-semibold">UV</div>
+                <div className="text-sm opacity-80">UV products</div>
+              </button>
               <button
               onClick={() => setShowLogoutConfirm(true)}
-              className="mt-65 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+              className=" px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
               title="Logout"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -396,6 +478,8 @@ const AdminTimelinePage = () => {
               </svg>
               Logout
             </button>
+
+              
             </div>
           </div>
         </div>
@@ -464,6 +548,56 @@ const AdminTimelinePage = () => {
                 onAssignUser={handleAssignUser}
               />
             </div>
+          </div>
+        )}
+
+        {/* PRODUCT TYPE SECTIONS */}
+        {activeSection === 'roland' && (
+          <div className="rounded-2xl p-12">
+            <h2 className="text-2xl font-bold text-gray-900 mb-8">Roland Products</h2>
+            <PrintTypesMenu filterType="Roland" />
+          </div>
+        )}
+
+        {activeSection === 'digital' && (
+          <div className="rounded-2xl p-12">
+            <h2 className="text-2xl font-bold text-gray-900 mb-8">Digital Products</h2>
+            <PrintTypesMenu filterType="Digital" />
+          </div>
+        )}
+
+        {activeSection === 'sign' && (
+          <div className="rounded-2xl p-12">
+            <h2 className="text-2xl font-bold text-gray-900 mb-8">Sign Products</h2>
+            <PrintTypesMenu filterType="Sign" />
+          </div>
+        )}
+
+        {activeSection === 'laser' && (
+          <div className="rounded-2xl p-12">
+            <h2 className="text-2xl font-bold text-gray-900 mb-8">Laser Products</h2>
+            <PrintTypesMenu filterType="Laser" />
+          </div>
+        )}
+
+        {activeSection === 'wood' && (
+          <div className="rounded-2xl p-12">
+            <h2 className="text-2xl font-bold text-gray-900 mb-8">Wood Products</h2>
+            <PrintTypesMenu filterType="Wood" />
+          </div>
+        )}
+
+        {activeSection === 'reprint' && (
+          <div className="rounded-2xl p-12">
+            <h2 className="text-2xl font-bold text-gray-900 mb-8">Reprint Products</h2>
+            <PrintTypesMenu filterType="Reprint" />
+          </div>
+        )}
+
+        {activeSection === 'uv' && (
+          <div className="rounded-2xl p-12">
+            <h2 className="text-2xl font-bold text-gray-900 mb-8">UV Products</h2>
+            <PrintTypesMenu filterType="UV" />
           </div>
         )}
 
