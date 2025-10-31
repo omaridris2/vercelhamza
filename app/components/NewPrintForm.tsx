@@ -181,7 +181,6 @@ const AddPrintForm = ({ onClose, onSuccess, editMode = false, productData }: Add
     try {
       let imageUrl = productData?.image_url || null;
 
-      // Handle image upload if new image selected
       if (imageFile) {
         const fileName = generateFileName(imageFile);
         const { error: uploadError, data: uploadData } = await supabase.storage
@@ -209,7 +208,6 @@ const AddPrintForm = ({ onClose, onSuccess, editMode = false, productData }: Add
 
         imageUrl = publicUrl;
 
-        // Delete old image if in edit mode
         if (editMode && productData?.image_url) {
           const oldPath = productData.image_url.split('/').pop();
           if (oldPath) {
@@ -415,7 +413,7 @@ const AddPrintForm = ({ onClose, onSuccess, editMode = false, productData }: Add
             </div>
             <div className="space-y-2">
   <label htmlFor="productType" className="block text-sm font-semibold text-gray-800">
-    Cube Type *
+     Type *
   </label>
   <select
     id="productType"
