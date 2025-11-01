@@ -167,7 +167,6 @@ const NewUserForm = ({ onClose, onSubmit }: NewUserFormProps) => {
             </div>
           )}
 
-          {/* Buttons */}
           <div className="flex justify-end gap-4 mt-6">
             <button 
               onClick={onClose} 

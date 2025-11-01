@@ -19,7 +19,7 @@ interface UserTableProps {
   assignedUsers: { [key: string]: string | null };
   onAssignUser: (cubeId: string, userId: string | null) => void;
   loading?: boolean;
-  currentOperatorType?: string | null; // ADD THIS
+  currentOperatorType?: string | null;
 }
 
 type CubeType = "Roland" | "Digital" | "Sign" | "Laser" | "Wood" | "Reprint";
@@ -29,7 +29,7 @@ const CUBE_TYPES: CubeType[] = ["Roland", "Digital", "Sign", "Laser", "Wood", "R
 const TimeLineO: React.FC<UserTableProps> = ({ 
   users, 
   loading,
-  currentOperatorType // ADD THIS
+  currentOperatorType
 }) => {
   const [activeTab, setActiveTab] = useState<'Order Placement' | 'Order Filtering'>('Order Placement');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -38,13 +38,14 @@ const TimeLineO: React.FC<UserTableProps> = ({
   const [activeFilters, setActiveFilters] = useState<CubeType[]>([]);
   const [showAllTypes, setShowAllTypes] = useState(true);
   
-  // User filtering state
   const [activeUserFilters, setActiveUserFilters] = useState<string[]>([]);
   const [showAllUsers, setShowAllUsers] = useState(true);
   
-  // Date navigation state
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  
+  // ADD: Reprint tracking state
+  const [reprintCubes, setReprintCubes] = useState<Set<string>>(new Set());
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -58,10 +59,123 @@ const TimeLineO: React.FC<UserTableProps> = ({
   };
 
   const isTaskMissed = (cube: any) => {
+    // UPDATED: Don't mark reprint tasks as missed
+    if (reprintCubes.has(cube.id)) return false;
+    
     if (!cube.orderData?.deadline) return false;
     const now = new Date();
     const deadline = new Date(cube.orderData.deadline);
     return deadline.getTime() - now.getTime() < 0;
+  };
+
+  // ADD: Mark as Print handler
+  const handleMarkAsPrint = async (cubeId: string) => {
+    setCubes(prev =>
+      prev.map(cube =>
+        cube.id === cubeId
+          ? { 
+              ...cube,
+              completed: false,
+              orderData: { 
+                ...cube.orderData, 
+                status: 'print',
+                completed_at: null
+              }
+            }
+          : cube
+      )
+    );
+    
+    await updateOrderStatus(cubeId, 'print');
+    console.log(`Marked cube ${cubeId} as Print`);
+  };
+
+  // ADD: Mark as Lamination handler
+  const handleMarkAsLamination = async (cubeId: string) => {
+    setCubes(prev =>
+      prev.map(cube =>
+        cube.id === cubeId
+          ? { 
+              ...cube,
+              completed: false,
+              orderData: { 
+                ...cube.orderData, 
+                status: 'lamination',
+                completed_at: null
+              }
+            }
+          : cube
+      )
+    );
+    
+    await updateOrderStatus(cubeId, 'lamination');
+    console.log(`Marked cube ${cubeId} as Lamination`);
+  };
+
+  // ADD: Mark as Cut handler
+  const handleMarkAsCut = async (cubeId: string) => {
+    setCubes(prev =>
+      prev.map(cube =>
+        cube.id === cubeId
+          ? { 
+              ...cube,
+              completed: false,
+              orderData: { 
+                ...cube.orderData, 
+                status: 'cut',
+                completed_at: null
+              }
+            }
+          : cube
+      )
+    );
+    
+    await updateOrderStatus(cubeId, 'cut');
+    console.log(`Marked cube ${cubeId} as Cut`);
+  };
+
+  // ADD: Mark as Finishing handler
+  const handleMarkAsFinishing = async (cubeId: string) => {
+    setCubes(prev =>
+      prev.map(cube =>
+        cube.id === cubeId
+          ? { 
+              ...cube,
+              completed: false,
+              orderData: { 
+                ...cube.orderData, 
+                status: 'finishing',
+                completed_at: null
+              }
+            }
+          : cube
+      )
+    );
+    
+    await updateOrderStatus(cubeId, 'finishing');
+    console.log(`Marked cube ${cubeId} as Finishing`);
+  };
+
+  // ADD: Mark as Installation handler
+  const handleMarkAsInstallation = async (cubeId: string) => {
+    setCubes(prev =>
+      prev.map(cube =>
+        cube.id === cubeId
+          ? { 
+              ...cube,
+              completed: false,
+              orderData: { 
+                ...cube.orderData, 
+                status: 'installation',
+                completed_at: null
+              }
+            }
+          : cube
+      )
+    );
+    
+    await updateOrderStatus(cubeId, 'installation');
+    console.log(`Marked cube ${cubeId} as Installation`);
   };
 
   const scrollDesigners = (direction: "left" | "right") => {
@@ -79,8 +193,8 @@ const TimeLineO: React.FC<UserTableProps> = ({
     const cube = cubes.find(c => c.id === cubeId);
     if (!cube) return;
     
-    // Prevent moving completed or missed tasks
-    if (cube.completed || isTaskMissed(cube)) {
+    // UPDATED: Allow moving reprint tasks, but not completed or missed tasks
+    if (!reprintCubes.has(cubeId) && (cube.completed || isTaskMissed(cube))) {
       return;
     }
     
@@ -93,6 +207,30 @@ const TimeLineO: React.FC<UserTableProps> = ({
     );
     
     await updateOrderPosition(cubeId, null, null);
+  };
+
+  // ADD: Mark as Reprint handler
+  const handleMarkAsReprint = async (cubeId: string) => {
+    setReprintCubes(prev => new Set(prev).add(cubeId));
+    
+    await updateOrderStatus(cubeId, 'reprint');
+    
+    setCubes(prev =>
+      prev.map(cube =>
+        cube.id === cubeId
+          ? { 
+              ...cube, 
+              type: 'Reprint',
+              completed: false,
+              orderData: { 
+                ...cube.orderData, 
+                status: 'reprint',
+                completed_at: null
+              }
+            }
+          : cube
+      )
+    );
   };
 
   const TICKS = Array.from({ length: 24 });
@@ -119,7 +257,6 @@ const TimeLineO: React.FC<UserTableProps> = ({
   const [assignedUsers, setAssignedUsers] = useState<{[key: string]: string | null}>({});
   const [showMenu, setShowMenu] = useState(false);
 
-  // Helper functions for Date logic
   const formatDateForDB = useCallback((date: Date) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -180,8 +317,6 @@ const TimeLineO: React.FC<UserTableProps> = ({
         };
       });
 
-      
-
       const visibleCubes = allOrderCubes.filter(
         (cube: any) =>
           cube.tickId === null ||
@@ -191,6 +326,14 @@ const TimeLineO: React.FC<UserTableProps> = ({
       console.log('Filtered cubes:', visibleCubes);
 
       setCubes(visibleCubes);
+
+      // ADD: Initialize reprint cubes from loaded orders
+      const reprintIds = new Set(
+        visibleCubes
+          .filter((cube: any) => cube.orderData?.status === 'reprint')
+          .map((cube: any) => cube.id)
+      );
+      setReprintCubes(reprintIds);
 
       const assignments: { [key: string]: string | null } = {};
       visibleCubes.forEach((cube: any) => {
@@ -202,14 +345,14 @@ const TimeLineO: React.FC<UserTableProps> = ({
     } else {
       setCubes([]);
       setAssignedUsers({});
+      setReprintCubes(new Set());
     }
-  }, [formatDateForDB, selectedDate, currentOperatorType]); // ADD currentOperatorType to dependencies
+  }, [formatDateForDB, selectedDate, currentOperatorType]);
 
   useEffect(() => {
     loadOrders();
   }, [selectedDate, loadOrders]);
 
-  // Date navigation functions
   const navigateDate = (direction: 'prev' | 'next' | 'today') => {
     const newDate = new Date(selectedDate);
     
@@ -259,7 +402,6 @@ const TimeLineO: React.FC<UserTableProps> = ({
     setShowAllTypes(true);
   };
 
-  // User filter handlers
   const toggleUserFilter = (userId: string) => {
     setActiveUserFilters(prev => {
       if (prev.includes(userId)) {
@@ -278,24 +420,18 @@ const TimeLineO: React.FC<UserTableProps> = ({
     setShowAllUsers(true);
   };
 
-  // Get designers only
   const designers = users.filter(user => user.role.toLowerCase() === 'designer');
 
   const getFilteredCubes = () => {
     let filtered = cubes;
-    
-    // Apply type filters (but only if not already filtered by operator type)
-    if (!currentOperatorType && !showAllTypes && activeFilters.length > 0) {
+    if (!showAllTypes && activeFilters.length > 0) {
       filtered = filtered.filter(cube => activeFilters.includes(cube.type as CubeType));
     }
-    
-    // Apply user filters
     if (!showAllUsers && activeUserFilters.length > 0) {
       filtered = filtered.filter(cube => 
         cube.assignedUserId && activeUserFilters.includes(cube.assignedUserId)
       );
     }
-    
     return filtered;
   };
 
@@ -324,9 +460,27 @@ const TimeLineO: React.FC<UserTableProps> = ({
   };
 
   const handleComplete = async (id: string) => {
+    // UPDATED: Remove from reprint set when completing
+    if (reprintCubes.has(id)) {
+      setReprintCubes(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
+    }
+
     setCubes(prev =>
       prev.map(cube =>
-        cube.id === id ? { ...cube, completed: true } : cube
+        cube.id === id 
+          ? { 
+              ...cube, 
+              completed: true,
+              orderData: {
+                ...cube.orderData,
+                status: 'completed'
+              }
+            } 
+          : cube
       )
     );
     
@@ -337,6 +491,12 @@ const TimeLineO: React.FC<UserTableProps> = ({
     try {
       await deleteOrder(id);
       setCubes(prev => prev.filter(cube => cube.id !== id));
+      // UPDATED: Remove from reprint set when deleting
+      setReprintCubes(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
     } catch (error) {
       console.error("Failed to delete order:", error);
     }
@@ -348,8 +508,8 @@ const TimeLineO: React.FC<UserTableProps> = ({
     if (over) {
       const cube = cubes.find(c => c.id === active.id);
       
-      // Prevent dragging completed or missed tasks
-      if (cube && (cube.completed || isTaskMissed(cube))) {
+      // UPDATED: Allow dragging reprint tasks, but not completed or missed tasks
+      if (cube && !reprintCubes.has(cube.id) && (cube.completed || isTaskMissed(cube))) {
         return;
       }
       
@@ -428,7 +588,6 @@ const TimeLineO: React.FC<UserTableProps> = ({
 
   const filteredCubes = getFilteredCubes();
 
-  // Calculate task statistics (only for cubes placed on timeline)
   const getTaskStats = () => {
     const now = new Date();
     const oneHourInMs = 60 * 60 * 1000;
@@ -439,11 +598,15 @@ const TimeLineO: React.FC<UserTableProps> = ({
       total: placedCubes.length,
       completed: 0,
       urgent: 0,
-      missed: 0
+      missed: 0,
+      reprint: 0,
+      inProcess: 0
     };
 
     placedCubes.forEach(cube => {
-      if (cube.completed) {
+      if (reprintCubes.has(cube.id)) {
+        stats.reprint++;
+      } else if (cube.completed) {
         stats.completed++;
       } else if (cube.orderData?.deadline) {
         const deadline = new Date(cube.orderData.deadline);
@@ -453,7 +616,11 @@ const TimeLineO: React.FC<UserTableProps> = ({
           stats.missed++;
         } else if (timeUntilDeadline <= oneHourInMs) {
           stats.urgent++;
+        } else {
+          stats.inProcess++;
         }
+      } else {
+        stats.inProcess++;
       }
     });
 
@@ -494,7 +661,6 @@ const TimeLineO: React.FC<UserTableProps> = ({
 
   return (
     <div>
-      {/* date navigation */}
       <div className="p-4 mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
@@ -539,7 +705,6 @@ const TimeLineO: React.FC<UserTableProps> = ({
         </div>
       </div>
 
-      {/* Tab Navigation */}
       <div className="flex items-center gap-4 mb-6">
         <button
           onClick={() => {
@@ -576,12 +741,7 @@ const TimeLineO: React.FC<UserTableProps> = ({
             <div className="min-h-[10px] bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-4">
               {filteredCubes.filter(c => c.tickId === null).length === 0 ? (
                 <div className="flex items-center justify-center h-full text-gray-500 italic">
-                  {currentOperatorType 
-                    ? `No ${currentOperatorType} tasks in queue.`
-                    : activeFilters.length > 0 
-                      ? `No ${activeFilters.join(', ')} tasks in queue.`
-                      : "No tasks in queue. Create a new task to get started."
-                  }
+                  No tasks in queue. Create a new task to get started.
                 </div>
               ) : (
                 <div className="flex flex-wrap gap-4">
@@ -607,6 +767,13 @@ const TimeLineO: React.FC<UserTableProps> = ({
                         orderData={cube.orderData}
                         onMoveToQueue={moveCubeToQueue}
                         isMissed={isTaskMissed(cube)}
+                        isReprint={reprintCubes.has(cube.id)}
+                        onMarkAsReprint={handleMarkAsReprint}
+                        onMarkAsPrint={(id) => handleMarkAsPrint(id)}
+                        onMarkAsLamination={(id) => handleMarkAsLamination(id)}
+                        onMarkAsCut={(id) => handleMarkAsCut(id)}
+                        onMarkAsFinishing={(id) => handleMarkAsFinishing(id)}
+                        onMarkAsInstallation={(id) => handleMarkAsInstallation(id)}
                       />
                     </div>
                   ))}
@@ -619,7 +786,6 @@ const TimeLineO: React.FC<UserTableProps> = ({
 
       {activeTab === 'Order Filtering' && (
         <div className="mb-6">
-          {/* Only show type filters if operator doesn't have a specific type */}
           {!currentOperatorType && (
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-700 mb-3">Filter by Task Type</h3>
@@ -656,7 +822,6 @@ const TimeLineO: React.FC<UserTableProps> = ({
             </div>
           )}
 
-          {/* Designer Filters */}
           {designers.length > 0 && (
             <div>
               <h3 className="text-lg font-semibold text-gray-700 mb-3">Filter by Designer</h3>
@@ -728,6 +893,9 @@ const TimeLineO: React.FC<UserTableProps> = ({
         <div className="text-2xl font-semibold">
           Missed: <span className="text-gray-600">{taskStats.missed}</span>
         </div>
+        <div className="text-2xl font-semibold">
+          Reprint: <span className="text-orange-600">{taskStats.reprint}</span>
+        </div>
       </div>
 
       <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCorners}>
@@ -795,6 +963,14 @@ const TimeLineO: React.FC<UserTableProps> = ({
                               creatorUser={cube.creatorUser}
                               orderData={cube.orderData}
                               onMoveToQueue={moveCubeToQueue}
+                              isMissed={isTaskMissed(cube)}
+                              isReprint={reprintCubes.has(cube.id)}
+                              onMarkAsReprint={handleMarkAsReprint}
+                              onMarkAsPrint={(id) => handleMarkAsPrint(id)}
+                              onMarkAsLamination={(id) => handleMarkAsLamination(id)}
+                              onMarkAsCut={(id) => handleMarkAsCut(id)}
+                              onMarkAsFinishing={(id) => handleMarkAsFinishing(id)}
+                              onMarkAsInstallation={(id) => handleMarkAsInstallation(id)}
                             />
                           </div>
                         ))}
