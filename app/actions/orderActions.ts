@@ -201,7 +201,22 @@ export async function fetchOrders() {
           product_id,
           products (
             name,
-            type
+            type,
+            image_url
+          ),
+          order_item_options (
+            id,
+            name,
+            price_snapshot,
+            product_menu_options (
+              id,
+              option_name,
+              price,
+              product_menus (
+                id,
+                name
+              )
+            )
           )
         )
       `)
