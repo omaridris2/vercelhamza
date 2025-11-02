@@ -11,7 +11,7 @@ type AddToCartData = {
   selected_option_ids: number[];
   discount_code_id?: string;
   customer_name?: string;
-  order_no?: number;
+  order_no?: string;
   deadline?: string;
 };
 

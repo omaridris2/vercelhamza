@@ -529,18 +529,18 @@ const AddPrintForm = ({ onClose, onSuccess, editMode = false, productData }: Add
                           disabled={loading}
                         />
                         <div className="relative">
-                          <input
-                            type="number"
-                            placeholder="0.00"
-                            step="0.01"
-                            min="0"
-                            value={opt.price}
-                            onChange={(e) => updateOption(menuIndex, optionIndex, 'price', e.target.value)}
-                            className="w-24 border border-gray-300 rounded-lg px-3 py-2 pl-7 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 disabled:bg-gray-50"
-                            disabled={loading}
-                          />
-                          <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">$</span>
-                        </div>
+  <input
+    type="number"
+    placeholder="0.00"
+    step="0.01"
+    min="0"
+    value={opt.price}
+    onChange={(e) => updateOption(menuIndex, optionIndex, 'price', e.target.value)}
+    className="w-24 border border-gray-300 rounded-lg px-3 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 disabled:bg-gray-50"
+    disabled={loading}
+  />
+  <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs font-semibold">SAR</span>
+</div>
                         <button
                           type="button"
                           onClick={() => removeOption(menuIndex, optionIndex)}

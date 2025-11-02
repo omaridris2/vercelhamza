@@ -14,6 +14,7 @@ import Timeline from '../components/TimeLIne';
 import UserTable from '../components/UsersMenu';
 import PrintTypesMenu from '../components/PrintTypesMenu';
 
+
 type DiscountCode = {
   id: string;
   title: string;
@@ -544,50 +545,141 @@ const AdminTimelinePage = () => {
         {/* PRODUCT TYPE SECTIONS */}
         {activeSection === 'roland' && (
           <div className="rounded-2xl p-12">
-            <h2 className="text-2xl font-bold text-gray-900 mb-8">Roland Products</h2>
+            <div className='flex items-center justify-between mb-8'>
+              <h2 className="text-2xl font-bold text-gray-900">Roland Products</h2>
+              <button 
+                onClick={() => setShowPrintMenu(true)} 
+                className="bg-[#636255] text-white px-20 py-2 rounded-lg hover:bg-yellow-500"
+              >
+                Add Print Type
+              </button>
+            </div>
             <PrintTypesMenu filterType="Roland" />
+            {showPrintMenu && (
+              <AddPrintForm
+                onClose={() => setShowPrintMenu(false)}
+              />
+            )}
           </div>
         )}
 
         {activeSection === 'digital' && (
           <div className="rounded-2xl p-12">
-            <h2 className="text-2xl font-bold text-gray-900 mb-8">Digital Products</h2>
+            <div className='flex items-center justify-between mb-8'>
+              <h2 className="text-2xl font-bold text-gray-900">Digital Products</h2>
+              <button 
+                onClick={() => setShowPrintMenu(true)} 
+                className="bg-[#636255] text-white px-20 py-2 rounded-lg hover:bg-yellow-500"
+              >
+                Add Print Type
+              </button>
+            </div>
             <PrintTypesMenu filterType="Digital" />
+            {showPrintMenu && (
+              <AddPrintForm
+                onClose={() => setShowPrintMenu(false)}
+              />
+            )}
           </div>
         )}
 
         {activeSection === 'sign' && (
           <div className="rounded-2xl p-12">
-            <h2 className="text-2xl font-bold text-gray-900 mb-8">Sign Products</h2>
+            <div className='flex items-center justify-between mb-8'>
+              <h2 className="text-2xl font-bold text-gray-900">Sign Products</h2>
+              <button 
+                onClick={() => setShowPrintMenu(true)} 
+                className="bg-[#636255] text-white px-20 py-2 rounded-lg hover:bg-yellow-500"
+              >
+                Add Print Type
+              </button>
+            </div>
             <PrintTypesMenu filterType="Sign" />
+            {showPrintMenu && (
+              <AddPrintForm
+                onClose={() => setShowPrintMenu(false)}
+              />
+            )}
           </div>
         )}
 
         {activeSection === 'laser' && (
           <div className="rounded-2xl p-12">
-            <h2 className="text-2xl font-bold text-gray-900 mb-8">Laser Products</h2>
+            <div className='flex items-center justify-between mb-8'>
+              <h2 className="text-2xl font-bold text-gray-900">Laser Products</h2>
+              <button 
+                onClick={() => setShowPrintMenu(true)} 
+                className="bg-[#636255] text-white px-20 py-2 rounded-lg hover:bg-yellow-500"
+              >
+                Add Print Type
+              </button>
+            </div>
             <PrintTypesMenu filterType="Laser" />
+            {showPrintMenu && (
+              <AddPrintForm
+                onClose={() => setShowPrintMenu(false)}
+              />
+            )}
           </div>
         )}
 
         {activeSection === 'wood' && (
           <div className="rounded-2xl p-12">
-            <h2 className="text-2xl font-bold text-gray-900 mb-8">Wood Products</h2>
+            <div className='flex items-center justify-between mb-8'>
+              <h2 className="text-2xl font-bold text-gray-900">Wood Products</h2>
+              <button 
+                onClick={() => setShowPrintMenu(true)} 
+                className="bg-[#636255] text-white px-20 py-2 rounded-lg hover:bg-yellow-500"
+              >
+                Add Print Type
+              </button>
+            </div>
             <PrintTypesMenu filterType="Wood" />
+            {showPrintMenu && (
+              <AddPrintForm
+                onClose={() => setShowPrintMenu(false)}
+              />
+            )}
           </div>
         )}
 
         {activeSection === 'reprint' && (
           <div className="rounded-2xl p-12">
-            <h2 className="text-2xl font-bold text-gray-900 mb-8">Reprint Products</h2>
+            <div className='flex items-center justify-between mb-8'>
+              <h2 className="text-2xl font-bold text-gray-900">Reprint Products</h2>
+              <button 
+                onClick={() => setShowPrintMenu(true)} 
+                className="bg-[#636255] text-white px-20 py-2 rounded-lg hover:bg-yellow-500"
+              >
+                Add Print Type
+              </button>
+            </div>
             <PrintTypesMenu filterType="Reprint" />
+            {showPrintMenu && (
+              <AddPrintForm
+                onClose={() => setShowPrintMenu(false)}
+              />
+            )}
           </div>
         )}
 
         {activeSection === 'uv' && (
           <div className="rounded-2xl p-12">
-            <h2 className="text-2xl font-bold text-gray-900 mb-8">UV Products</h2>
+            <div className='flex items-center justify-between mb-8'>
+              <h2 className="text-2xl font-bold text-gray-900">UV Products</h2>
+              <button 
+                onClick={() => setShowPrintMenu(true)} 
+                className="bg-[#636255] text-white px-20 py-2 rounded-lg hover:bg-yellow-500"
+              >
+                Add Print Type
+              </button>
+            </div>
             <PrintTypesMenu filterType="UV" />
+            {showPrintMenu && (
+              <AddPrintForm
+                onClose={() => setShowPrintMenu(false)}
+              />
+            )}
           </div>
         )}
 

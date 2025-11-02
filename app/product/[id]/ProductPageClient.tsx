@@ -64,7 +64,7 @@ const ProductPageClient = ({ product }: Props) => {
   const [appliedDiscount, setAppliedDiscount] = useState<DiscountCode | null>(null);
   const [discountError, setDiscountError] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
-  const [orderNo, setOrderNo] = useState<number | ''>('');
+  const [orderNo, setOrderNo] = useState<string>('');
 
   const handleSelect = (menuId: number, optionId: number) => {
     setSelectedOptions((prev) => ({
@@ -152,7 +152,6 @@ const ProductPageClient = ({ product }: Props) => {
         return;
       }
 
-      // Success - apply discount
       setAppliedDiscount(data);
       setDiscountError(null);
     } catch (err) {
@@ -171,43 +170,44 @@ const ProductPageClient = ({ product }: Props) => {
   };
 
   const handleAddToCart = async () => {
-  if (!allOptionsSelected || !userId) return;
+    if (!allOptionsSelected || !userId) return;
 
-  setIsSubmitting(true);
-  try {
-    const selectedOptionIds = Object.values(selectedOptions).filter(
-      (id): id is number => id !== null
-    );
-
-    const result = await addToCart({
-      user_id: userId,          
-      product_id: product.id,
-      quantity,
-      price: totalPrice,
-      selected_option_ids: selectedOptionIds,
-      discount_code_id: appliedDiscount?.id,
-      order_no: orderNo ? Number(orderNo): undefined,
-    });
-
-    if (result.success) {
-      alert(result.message || 'Added to cart successfully!');
-      setSelectedOptions(
-        Object.fromEntries(product.product_menus.map((menu) => [menu.id, null]))
+    setIsSubmitting(true);
+    try {
+      const selectedOptionIds = Object.values(selectedOptions).filter(
+        (id): id is number => id !== null
       );
-      setQuantity(1);
-      setAppliedDiscount(null);
-      setDiscountCode('');
-      setDiscountError(null);
-    } else {
-      alert(result.error || 'Failed to add to cart. Please try again.');
+
+      const result = await addToCart({
+        user_id: userId,          
+        product_id: product.id,
+        quantity,
+        price: totalPrice,
+        selected_option_ids: selectedOptionIds,
+        discount_code_id: appliedDiscount?.id,
+        order_no: orderNo ? orderNo.trim() : undefined,
+      });
+
+      if (result.success) {
+        alert(result.message || 'Added to cart successfully!');
+        setSelectedOptions(
+          Object.fromEntries(product.product_menus.map((menu) => [menu.id, null]))
+        );
+        setQuantity(1);
+        setAppliedDiscount(null);
+        setDiscountCode('');
+        setDiscountError(null);
+        setOrderNo('');
+      } else {
+        alert(result.error || 'Failed to add to cart. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      alert('Failed to add to cart. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
-  } catch (error) {
-    console.error('Error adding to cart:', error);
-    alert('Failed to add to cart. Please try again.');
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  };
 
   const getGridClass = () => {
     const count = product.product_menus.length;
@@ -285,14 +285,14 @@ const ProductPageClient = ({ product }: Props) => {
                         <option value="">Choose an option...</option>
                         {menu.product_menu_options.map((opt) => (
                           <option key={opt.id} value={opt.id}>
-                            {opt.option_name} (+${opt.price.toFixed(2)})
+                            {opt.option_name} (+SAR {opt.price.toFixed(2)})
                           </option>
                         ))}
                       </select>
 
                       {isSelected && selectedOption && (
                         <p className="mt-2 text-sm text-blue-600 font-medium">
-                          ✓ {selectedOption.option_name} - ${selectedOption.price.toFixed(2)}
+                          ✓ {selectedOption.option_name} - SAR {selectedOption.price.toFixed(2)}
                         </p>
                       )}
                     </div>
@@ -369,27 +369,26 @@ const ProductPageClient = ({ product }: Props) => {
 
               {/* Summary Bar */}
               <div className="border-t-2 border-slate-200 pt-8">
-                {/* Price Breakdown */}
+                
                 <div className="mb-6 space-y-2">
                   <div className="flex justify-between text-slate-700">
                     <span>Subtotal:</span>
-                    <span className="font-semibold">${(basePrice * quantity).toFixed(2)}</span>
+                    <span className="font-semibold">SAR {(basePrice * quantity).toFixed(2)}</span>
                   </div>
                   {appliedDiscount && (
                     <div className="flex justify-between text-green-600">
                       <span>Discount ({appliedDiscount.code}):</span>
-                      <span className="font-semibold">-${discountAmount.toFixed(2)}</span>
+                      <span className="font-semibold">-SAR {discountAmount.toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-xl font-bold text-slate-900 pt-2 border-t">
                     <span>Total:</span>
-                    <span>${totalPrice.toFixed(2)}</span>
+                    <span>SAR {totalPrice.toFixed(2)}</span>
                   </div>
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
                   
-                  {/* Quantity Selector */}
                   <div className="flex items-center gap-3">
                     <span className="text-lg font-semibold text-slate-700">Quantity:</span>
                     <div className="flex items-center border rounded-lg overflow-hidden">
@@ -414,29 +413,30 @@ const ProductPageClient = ({ product }: Props) => {
                       </button>
                     </div>
                   </div>
+                  
                   <div className="flex items-center gap-3">
-    <label className="text-lg font-semibold text-slate-700">Order Number</label>
-    <input
-      type="number"
-      value={orderNo}
-      onChange={(e) => setOrderNo(Number(e.target.value) || '')}
-      
-      className="w-40 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-    />
-  </div>
+                    <label className="text-lg font-semibold text-slate-700">Order Number</label>
+                    <input
+                      type="text"
+                      value={orderNo}
+                      onChange={(e) => setOrderNo(e.target.value)}
+                      inputMode="numeric" 
+                      placeholder="Order Number"
+                      className="w-40 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
 
-                  {/* Add to Cart Button */}
                   <button
-  onClick={handleAddToCart}
-  disabled={!allOptionsSelected || isSubmitting || !userId}
-  className={`px-8 py-4 rounded-xl font-bold text-lg transition-all duration-200 min-w-[200px] ${
-    allOptionsSelected && !isSubmitting && userId
-      ? 'bg-[#636255] hover:bg-yellow-500 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
-      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-  }`}
->
-  {isSubmitting ? 'Adding...' : !userId ? 'Login Required' : allOptionsSelected ? 'Add to Cart' : `Select ${product.product_menus.filter((m) => !selectedOptions[m.id]).length} More`}
-</button>
+                    onClick={handleAddToCart}
+                    disabled={!allOptionsSelected || isSubmitting || !userId}
+                    className={`px-8 py-4 rounded-xl font-bold text-lg transition-all duration-200 min-w-[200px] ${
+                      allOptionsSelected && !isSubmitting && userId
+                        ? 'bg-[#636255] hover:bg-yellow-500 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
+                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    }`}
+                  >
+                    {isSubmitting ? 'Adding...' : !userId ? 'Login Required' : allOptionsSelected ? 'Add to Cart' : `Select ${product.product_menus.filter((m) => !selectedOptions[m.id]).length} More`}
+                  </button>
                 </div>
               </div>
             </div>
