@@ -146,11 +146,14 @@ const TrackOrder: React.FC<TrackOrderProps> = ({ users }) => {
 
           const orderItem = match.order_items?.[0];
           const product = orderItem?.products;
-          
+
+          // Check if product is an array and access the first element
+          const selectedProduct = Array.isArray(product) ? product[0] : product;
+
           setFoundOrder({
             id: match.id.toString(),
             tickId: match.timeline_position,
-            title: product,
+            title: selectedProduct?.name, // Access name from the selected product
             orderno: match.order_no || match.id,
             size: `Qty: ${match.Quantity || 1}`,
             type: match.type || "Roland",

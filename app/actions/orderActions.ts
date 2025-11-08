@@ -2,7 +2,6 @@
 
 import { createClient } from '@/lib/server';
 
-// Type for adding to cart
 type AddToCartData = {
   product_id: number;
   quantity: number;
@@ -199,6 +198,7 @@ export async function fetchOrders() {
         order_items (
           id,
           product_id,
+          option_name,
           products (
             name,
             type,
