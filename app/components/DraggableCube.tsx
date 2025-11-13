@@ -36,6 +36,7 @@ interface DraggableCubeProps {
   onMarkAsCut?: (id: string) => void;
   onMarkAsFinishing?: (id: string) => void;
   onMarkAsInstallation?: (id: string) => void;
+  onMarkAsDelivery?: (id: string) => void;
 }
 
 const DraggableCube = ({ 
@@ -60,6 +61,7 @@ const DraggableCube = ({
   onMarkAsCut,
   onMarkAsFinishing,
   onMarkAsInstallation,
+  onMarkAsDelivery,
   isReadOnly,
   orderData
 }: DraggableCubeProps) => {
@@ -585,7 +587,7 @@ const DraggableCube = ({
       )}
 
       {/* Move to Stage submenu */}
-      {(onMarkAsPrint || onMarkAsLamination || onMarkAsCut || onMarkAsFinishing || onMarkAsInstallation) && (
+      {(onMarkAsPrint || onMarkAsLamination || onMarkAsCut || onMarkAsFinishing || onMarkAsInstallation || onMarkAsDelivery) && (
         <div className="relative">
           <div
             className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200 flex justify-between items-center"
@@ -598,7 +600,7 @@ const DraggableCube = ({
 
           {showStageMenu && (
             <div
-              className="absolute left-full top-0 bg-white border border-gray-300 rounded-lg shadow-lg min-w-[180px] ml-1"
+              className="absolute left-full -top-10 bg-white border border-gray-300 rounded-lg shadow-lg min-w-[180px] ml-1"
               style={{ zIndex: 10000 }}
               onMouseLeave={() => setShowStageMenu(false)}
             >
@@ -671,7 +673,23 @@ const DraggableCube = ({
                   Installation
                 </div>
               )}
-            </div>
+
+              {onMarkAsDelivery && (
+                <div
+                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer last:rounded-b-lg"
+                  onClick={() => {
+                    onMarkAsDelivery(id);
+                    setMenuPosition(null);
+                    setMenuOpen(false);
+                    setShowStageMenu(false);
+                  }}
+                >
+                  Delivery
+                </div>
+              )}
+
+              
+            </div>//onMarkAsDelivery
           )}
         </div>
       )}

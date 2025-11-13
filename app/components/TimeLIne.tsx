@@ -178,6 +178,27 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
     console.log(`Marked cube ${cubeId} as Installation`);
   };
 
+  const handleMarkAsDelivery = async (cubeId: string) => {
+    setCubes(prev =>
+      prev.map(cube =>
+        cube.id === cubeId
+          ? { 
+              ...cube,
+              completed: false,
+              orderData: { 
+                ...cube.orderData, 
+                status: 'delivery',
+                completed_at: null
+              }
+            }
+          : cube
+      )
+    );
+    
+    await updateOrderStatus(cubeId, 'delivery');
+    console.log(`Marked cube ${cubeId} as delivery`);
+  };
+
   const scrollDesigners = (direction: "left" | "right") => {
     if (designerScrollRef.current) {
       const scrollAmount = 300;
@@ -778,6 +799,7 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
                         onMarkAsCut={(id) => handleMarkAsCut(id)}
                         onMarkAsFinishing={(id) => handleMarkAsFinishing(id)}
                         onMarkAsInstallation={(id) => handleMarkAsInstallation(id)}
+                        onMarkAsDelivery={(id) => handleMarkAsDelivery(id)}
                       />
                     </div>
                   ))}
@@ -991,6 +1013,7 @@ const Timeline: React.FC<UserTableProps> = ({ users, loading }) => {
                               onMarkAsCut={(id) => handleMarkAsCut(id)}
                               onMarkAsFinishing={(id) => handleMarkAsFinishing(id)}
                               onMarkAsInstallation={(id) => handleMarkAsInstallation(id)}
+                              onMarkAsDelivery={(id) => handleMarkAsDelivery(id)}
                             />
                           </div>
                         ))}

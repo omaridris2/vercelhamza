@@ -156,6 +156,27 @@ const TimeLineO: React.FC<UserTableProps> = ({
     console.log(`Marked cube ${cubeId} as Finishing`);
   };
 
+  const handleMarkAsDelivery = async (cubeId: string) => {
+      setCubes(prev =>
+        prev.map(cube =>
+          cube.id === cubeId
+            ? { 
+                ...cube,
+                completed: false,
+                orderData: { 
+                  ...cube.orderData, 
+                  status: 'dilivery',
+                  completed_at: null
+                }
+              }
+            : cube
+        )
+      );
+      
+      await updateOrderStatus(cubeId, 'dilivery');
+      console.log(`Marked cube ${cubeId} as dilivery`);
+    };
+
   // ADD: Mark as Installation handler
   const handleMarkAsInstallation = async (cubeId: string) => {
     setCubes(prev =>
@@ -173,6 +194,9 @@ const TimeLineO: React.FC<UserTableProps> = ({
           : cube
       )
     );
+    
+    
+
     
     await updateOrderStatus(cubeId, 'installation');
     console.log(`Marked cube ${cubeId} as Installation`);
@@ -774,6 +798,7 @@ const TimeLineO: React.FC<UserTableProps> = ({
                         onMarkAsCut={(id) => handleMarkAsCut(id)}
                         onMarkAsFinishing={(id) => handleMarkAsFinishing(id)}
                         onMarkAsInstallation={(id) => handleMarkAsInstallation(id)}
+                        onMarkAsDelivery={(id) => handleMarkAsDelivery(id)}
                       />
                     </div>
                   ))}
@@ -971,6 +996,7 @@ const TimeLineO: React.FC<UserTableProps> = ({
                               onMarkAsCut={(id) => handleMarkAsCut(id)}
                               onMarkAsFinishing={(id) => handleMarkAsFinishing(id)}
                               onMarkAsInstallation={(id) => handleMarkAsInstallation(id)}
+                              onMarkAsDelivery={(id) => handleMarkAsDelivery(id)}
                             />
                           </div>
                         ))}

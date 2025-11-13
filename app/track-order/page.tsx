@@ -5,7 +5,7 @@ import DraggableCube from "../components/DraggableCube";
 import DroppableTick from "../components/DroppableTick";
 
 import { fetchOrders } from "@/app/actions/orderActions";
-
+const ICON_SIZE = 50;
 type User = {
   id: string;
   name: string;
@@ -41,51 +41,60 @@ const TrackOrder: React.FC<TrackOrderProps> = ({ users }) => {
 
   const getStatusInfo = (order: any) => {
     if (!order) return { label: 'Unknown', color: 'gray', bgColor: 'bg-gray-100', textColor: 'text-gray-800' };
+    const sizee= 50;
     
-    // Check for production stages in order
     if (order.stage === 'print' || order.stage === 'printing') {
       return { 
-        label: '🖨️ Printing', 
+        label: ' Printing', 
         color: 'blue', 
         bgColor: 'bg-blue-100', 
         textColor: 'text-blue-800',
-        icon: '🖨️'
+        icon: ''
       };
     }
     if (order.stage === 'lamination') {
       return { 
-        label: '📄 Lamination', 
+        label: ' Lamination', 
         color: 'purple', 
         bgColor: 'bg-purple-100', 
         textColor: 'text-purple-800',
-        icon: '📄'
+        icon: ''
       };
     }
     if (order.stage === 'cut' || order.stage === 'cutting') {
       return { 
-        label: '✂️ Cutting', 
+        label: 'Cutting', 
         color: 'orange', 
         bgColor: 'bg-orange-100', 
         textColor: 'text-orange-800',
-        icon: '✂️'
+        icon: ''
       };
     }
     if (order.stage === 'finishing') {
       return { 
-        label: '✨ Finishing', 
+        label: 'Finishing', 
         color: 'pink', 
         bgColor: 'bg-pink-100', 
         textColor: 'text-pink-800',
-        icon: '✨'
+        icon: ''
       };
     }
     if (order.stage === 'installation') {
       return { 
-        label: '🔧 Installation', 
+        label: 'Installation', 
         color: 'teal', 
         bgColor: 'bg-teal-100', 
         textColor: 'text-teal-800',
-        icon: '🔧'
+        icon: ''
+      };
+    }
+    if (order.stage === 'delivery') {
+      return { 
+        label: 'Delivery', 
+        color: 'indigo', 
+        bgColor: 'bg-indigo-100', 
+        textColor: 'text-indigo-800',
+        icon: ''
       };
     }
     
@@ -102,11 +111,11 @@ const TrackOrder: React.FC<TrackOrderProps> = ({ users }) => {
     
     // Default to in progress
     return { 
-      label: '⏳ In Progress', 
+      label: 'In Progress', 
       color: 'yellow', 
       bgColor: 'bg-yellow-100', 
       textColor: 'text-yellow-800',
-      icon: '⏳'
+      icon: ''
     };
   };
 
@@ -153,7 +162,7 @@ const TrackOrder: React.FC<TrackOrderProps> = ({ users }) => {
           setFoundOrder({
             id: match.id.toString(),
             tickId: match.timeline_position,
-            title: selectedProduct?.name, // Access name from the selected product
+            title: selectedProduct?.name,
             orderno: match.order_no || match.id,
             size: `Qty: ${match.Quantity || 1}`,
             type: match.type || "Roland",
@@ -217,51 +226,216 @@ const TrackOrder: React.FC<TrackOrderProps> = ({ users }) => {
 
   const statusInfo = getStatusInfo(foundOrder);
 
+  const getVisibleStages = () => {
+    const baseStages = ['printing', 'lamination', 'cutting', 'finishing', 'done'];
+    const optionalStages = [];
+    
+    if (foundOrder?.stage === 'installation' || foundOrder?.orderData?.has_installation) {
+      optionalStages.push('installation');
+    }
+    
+    if (foundOrder?.stage === 'delivery' || foundOrder?.orderData?.has_delivery) {
+      optionalStages.push('delivery');
+    }
+    
+    return [...baseStages, ...optionalStages];
+  };
+
   return (
     <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">Track Order</h1>
+      <h1 className="text-5xl font-semibold mb-1 text-yellow-400 text-center ">Track Order</h1>
 
-      <div className="mb-8 bg-white p-6 rounded-lg shadow">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Enter Order Number
-        </label>
-        <div className="flex gap-2 max-w-md">
-          <input
-            type="text"
-            value={searchOrderNo}
-            onChange={(e) => setSearchOrderNo(e.target.value)}
-            placeholder="Enter Order Number..."
-            onKeyDown={handleKeyDown}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#636255] focus:border-transparent"
-          />
-          <button
-            onClick={handleSearch}
-            disabled={isSearching}
-            className="px-6 py-2 bg-[#636255] text-white rounded-lg hover:bg-[#504f44] disabled:opacity-50 transition"
-          >
-            {isSearching ? "Searching..." : "Search"}
-          </button>
-          {(searchOrderNo || foundOrder) && (
-            <button
-              onClick={clearSearch}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
-            >
-              Clear
-            </button>
-          )}
-        </div>
+      <div className="mb-8 p-6 rounded-lg">
+  <label className="block text-sm font-medium text-gray-700 mb-2 text-center mr-78">
+    Enter Order Number
+  </label>
 
-        {errorMessage && (
-          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
-            {errorMessage}
-          </div>
-        )}
-      </div>
+  <div className="flex gap-2 max-w-md justify-center mx-auto">
+    <input
+      type="text"
+      value={searchOrderNo}
+      onChange={(e) => setSearchOrderNo(e.target.value)}
+      placeholder="Enter Order Number..."
+      onKeyDown={handleKeyDown}
+      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#636255] focus:border-transparent"
+    />
+    <button
+      onClick={handleSearch}
+      disabled={isSearching}
+      className="px-6 py-2 bg-[#636255] text-white rounded-lg hover:bg-[#504f44] disabled:opacity-50 transition"
+    >
+      {isSearching ? "Searching..." : "Search"}
+    </button>
+
+    {(searchOrderNo || foundOrder) && (
+      <button
+        onClick={clearSearch}
+        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+      >
+        Clear
+      </button>
+    )}
+  </div>
+
+  {errorMessage && (
+    <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
+      {errorMessage}
+    </div>
+  )}
+</div>
+
+
 
       {foundOrder && selectedDate && (
         <div>
-          <div className="mb-6 bg-white p-6 rounded-lg shadow">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">Order Details</h2>
+          <div className="mt-6 pt-6 mb-6">
+              <h3 className="ml-2 text-3xl font-semibold text-black mb-1">Production Progress</h3>
+              <div className="ml-2 mt-2 h-1 bg-yellow-400 w-90 mb-10"></div>
+              <div className="flex items-center justify-between relative">
+                {getVisibleStages().map((stage, idx, stages) => {
+                  const stageIcons: Record<string, any> = {
+                    printing: <img
+              src="/printing.svg"
+              alt="printing"
+              width={ICON_SIZE}
+              height={ICON_SIZE}
+              className="mb-0"
+            />,
+                    lamination: <img
+              src="/lamination.svg"
+              alt="lamination"
+              width={ICON_SIZE}
+              height={ICON_SIZE}
+              className="mb-0"
+            />,
+                    cutting: <img
+              src="/cutting.svg"
+              alt="cutting"
+              width={ICON_SIZE}
+              height={ICON_SIZE}
+              className="mb-0"
+            />,
+                    finishing: <img
+              src="/finishing.svg"
+              alt="finishing"
+              width={ICON_SIZE}
+              height={ICON_SIZE}
+              className="mb-0"
+            />,
+                    done: <img
+              src="/done.svg"
+              alt="done"
+              width={ICON_SIZE}
+              height={ICON_SIZE}
+              className="mb-0"
+            />,
+                    installation: <img
+              src="/installation.svg"
+              alt="installation"
+              width={ICON_SIZE}
+              height={ICON_SIZE}
+              className="mb-0"
+            />,
+                    delivery: <img
+              src="/delivery.svg"
+              alt="delivery"
+              width={ICON_SIZE}
+              height={ICON_SIZE}
+              className="mb-0"
+            />
+                  };
+                  
+                  const stageLabels: Record<string, string> = {
+                    printing: 'Printing',
+                    lamination: 'Lamination',
+                    cutting: 'Cutting',
+                    finishing: 'Finishing',
+                    done: 'Done',
+                    installation: 'Installation',
+                    delivery: 'Delivery'
+                  };
+  const allStages = ['printing', 'lamination', 'cutting', 'finishing', 'done', 'installation', 'delivery'];
+                  
+                  // Normalize stage names for comparison
+                  const normalizedCurrentStage = foundOrder.stage === 'print' ? 'printing' : 
+                                                 foundOrder.stage === 'cut' ? 'cutting' : 
+                                                 foundOrder.stage === 'completed' ? 'done' :
+                                                 foundOrder.stage;
+                  
+                  const currentStageIndex = allStages.indexOf(normalizedCurrentStage);
+                  const thisStageIndex = allStages.indexOf(stage);
+
+                  const isCurrentStage = foundOrder.stage === stage || 
+                    (stage === 'printing' && foundOrder.stage === 'print') ||
+                    (stage === 'cutting' && foundOrder.stage === 'cut') ||
+                    (stage === 'done' && foundOrder.stage === 'completed');
+                  
+                  const isPastStage = (currentStageIndex !== -1 && thisStageIndex < currentStageIndex);
+
+                  return (
+                    <React.Fragment key={stage}>
+                      <div className="flex flex-col items-center flex-1 relative z-10">
+                        <div className={`w-20 h-20 rounded-full flex items-center justify-center text-2xl mb-2 transition-all ${
+                          isCurrentStage 
+                            ? 'bg-yellow-400 ' 
+                            : isPastStage
+                              ? 'bg-green-600'
+                              : 'bg-[#949292]'
+                        }`}>
+                          {stageIcons[stage]}
+                        </div>
+                        <span className={`text-xx font-medium text-center ${
+                          isCurrentStage ? 'text-yellow-400 font-bold' : isPastStage ? 'text-green-600' : 'text-[#949292]'
+                        }`}>
+                          {stageLabels[stage]}
+                        </span>
+                      </div>
+                      {idx < stages.length - 1 && (
+                        <div className="relative h-3 flex-4 -mx-2 mb-6 overflow-hidden">
+                          {(() => {
+                            const nextStage = stages[idx + 1];
+                            const nextStageIndex = allStages.indexOf(nextStage);
+                            const isNextStageCurrent = foundOrder.stage === nextStage || 
+                              (nextStage === 'printing' && foundOrder.stage === 'print') ||
+                              (nextStage === 'cutting' && foundOrder.stage === 'cut') ||
+                              (nextStage === 'done' && foundOrder.stage === 'completed');
+                            
+                            // Line between past stage and current stage (left side of current)
+                            if (isPastStage && !isCurrentStage && isNextStageCurrent) {
+                              return (
+                                <>
+                                  <div className="absolute left-0 top-0 w-1/2 h-full bg-green-600"></div>
+                                  <div className="absolute right-0 top-0 w-1/2 h-full bg-yellow-400"></div>
+                                </>
+                              );
+                            }
+                            // Line between current stage and next stage (right side of current)
+                            else if (isCurrentStage && !isNextStageCurrent && nextStageIndex > thisStageIndex) {
+                              return (
+                                <>
+                                  <div className="absolute left-0 top-0 w-1/2 h-full bg-yellow-400"></div>
+                                  <div className="absolute right-0 top-0 w-1/2 h-full bg-[#949292]"></div>
+                                </>
+                              );
+                            }
+                            else {
+                              return <div className={`w-full h-full ${isPastStage ? 'bg-green-600' : 'bg-[#949292]'}`}></div>;
+                            }
+                          })()}
+                        </div>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            </div>
+             <h2 className="text-[1.75rem] font-semibold text-black mb-1 mt-20 mr-8">Order Details</h2>
+            <div className="mt-2 h-1 bg-yellow-400 w-90 mb-4"></div>
+          <div className="mb-6 bg-white p-6 rounded-lg ">
+
+
+
+           
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <span className="text-gray-600">Order Number:</span>
@@ -311,63 +485,7 @@ const TrackOrder: React.FC<TrackOrderProps> = ({ users }) => {
             </div>
 
             {/* Production Stage Progress */}
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">Production Progress</h3>
-              <div className="flex items-center justify-between">
-                {['printing', 'lamination', 'cutting', 'finishing', 'installation'].map((stage, idx) => {
-                  const stageIcons = {
-                    printing: '🖨️',
-                    lamination: '📄',
-                    cutting: '✂️',
-                    finishing: '✨',
-                    installation: '🔧'
-                  };
-                  
-                  const stageLabels = {
-                    printing: 'Printing',
-                    lamination: 'Lamination',
-                    cutting: 'Cutting',
-                    finishing: 'Finishing',
-                    installation: 'Installation'
-                  };
-
-                  const isCurrentStage = foundOrder.stage === stage || 
-                    (stage === 'printing' && foundOrder.stage === 'print') ||
-                    (stage === 'cutting' && foundOrder.stage === 'cut');
-                  
-                  const isPastStage = foundOrder.completed || 
-                    (foundOrder.stage && ['printing', 'lamination', 'cutting', 'finishing', 'installation'].indexOf(foundOrder.stage) > idx);
-
-                  return (
-                    <div key={stage} className="flex flex-col items-center flex-1">
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl mb-2 transition-all ${
-                        isCurrentStage 
-                          ? 'bg-blue-500 ring-4 ring-blue-200 scale-110' 
-                          : isPastStage
-                            ? 'bg-green-500'
-                            : 'bg-gray-200'
-                      }`}>
-                        {stageIcons[stage as keyof typeof stageIcons]}
-                      </div>
-                      <span className={`text-xs font-medium ${
-                        isCurrentStage ? 'text-blue-600 font-bold' : isPastStage ? 'text-green-600' : 'text-gray-500'
-                      }`}>
-                        {stageLabels[stage as keyof typeof stageLabels]}
-                      </span>
-                      {idx < 4 && (
-                        <div className={`absolute h-1 w-full mt-6 ${isPastStage ? 'bg-green-500' : 'bg-gray-200'}`} 
-                          style={{ 
-                            left: `${(idx + 1) * 20}%`,
-                            width: '20%',
-                            top: '24px'
-                          }} 
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            
           </div>
 
           {/* Timeline Section */}

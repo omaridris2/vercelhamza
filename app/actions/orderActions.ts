@@ -282,8 +282,6 @@ export async function updateOrderPosition(orderId: string, tickId: string | null
     return { success: false, error: error.message };
   }
 }
-
-// ✅ Update order status (e.g. completed)
 export async function updateOrderStatus(orderId: string, status: string) {
   try {
     const supabase = await createClient();
@@ -297,7 +295,8 @@ export async function updateOrderStatus(orderId: string, status: string) {
       'lamination', 
       'cut', 
       'finishing', 
-      'installation'
+      'installation',
+      'delivery'  // ✅ Added delivery
     ];
 
     if (!validStatuses.includes(status)) {
@@ -316,7 +315,7 @@ export async function updateOrderStatus(orderId: string, status: string) {
     }
 
     // If status is reprint or a production stage, clear completed_at
-    if (status === 'reprint' || ['print', 'lamination', 'cut', 'finishing', 'installation'].includes(status)) {
+    if (status === 'reprint' || ['print', 'lamination', 'cut', 'finishing', 'installation', 'delivery'].includes(status)) {
       updateData.completed_at = null;
     }
 
