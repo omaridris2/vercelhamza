@@ -165,7 +165,7 @@ const TimeLineO: React.FC<UserTableProps> = ({
                 completed: false,
                 orderData: { 
                   ...cube.orderData, 
-                  status: 'dilivery',
+                  status: 'delivery',
                   completed_at: null
                 }
               }
@@ -173,8 +173,8 @@ const TimeLineO: React.FC<UserTableProps> = ({
         )
       );
       
-      await updateOrderStatus(cubeId, 'dilivery');
-      console.log(`Marked cube ${cubeId} as dilivery`);
+      await updateOrderStatus(cubeId, 'delivery');
+      console.log(`Marked cube ${cubeId} as delivery`);
     };
 
   // ADD: Mark as Installation handler
