@@ -242,7 +242,7 @@ const TrackOrder: React.FC<TrackOrderProps> = ({ users }) => {
   };
 
   return (
-    <div className="p-6">
+    <div className="mr-20 ml-20">
       <h1 className="text-5xl font-semibold mb-1 text-yellow-400 text-center ">Track Order</h1>
 
       <div className="mb-8 p-6 rounded-lg">
