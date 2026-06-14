@@ -7,6 +7,7 @@ type ProductMenuOption = {
   id: number;
   option_name: string;
   price: number;
+  price_type: 'fixed' | 'percentage';
 };
 
 type ProductMenu = {
@@ -45,7 +46,8 @@ export default async function ProductPage({ params }: PageProps) {
         product_menu_options (
           id,
           option_name,
-          price
+          price,
+          price_type
         )
       )
     `)

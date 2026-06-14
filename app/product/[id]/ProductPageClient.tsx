@@ -8,6 +8,7 @@ type ProductMenuOption = {
   id: number;
   option_name: string;
   price: number;
+  price_type: 'fixed' | 'percentage';
 };
 
 type ProductMenu = {
@@ -78,26 +79,33 @@ const ProductPageClient = ({ product }: Props) => {
     setQuantity(value);
   };
 
-  const basePrice = useMemo(() => {
+  const fixedPrice = useMemo(() => {
     return product.product_menus.reduce((sum, menu) => {
       const selectedId = selectedOptions[menu.id];
       if (!selectedId) return sum;
-      const selectedOpt = menu.product_menu_options.find(
-        (opt) => opt.id === selectedId
-      );
-      return sum + (selectedOpt?.price || 0);
+      const opt = menu.product_menu_options.find((o) => o.id === selectedId);
+      if (!opt || opt.price_type !== 'fixed') return sum;
+      return sum + opt.price;
     }, 0);
   }, [selectedOptions, product]);
 
+  const basePrice = useMemo(() => {
+    const percentageAddition = product.product_menus.reduce((sum, menu) => {
+      const selectedId = selectedOptions[menu.id];
+      if (!selectedId) return sum;
+      const opt = menu.product_menu_options.find((o) => o.id === selectedId);
+      if (!opt || opt.price_type !== 'percentage') return sum;
+      return sum + (fixedPrice * opt.price) / 100;
+    }, 0);
+    return fixedPrice + percentageAddition;
+  }, [fixedPrice, selectedOptions, product]);
+
   const discountAmount = useMemo(() => {
     if (!appliedDiscount) return 0;
-    
     const subtotal = basePrice * quantity;
-    
     if (appliedDiscount.type === 'Percentage') {
       return (subtotal * appliedDiscount.amount) / 100;
     } else {
-      // fixed discount
       return appliedDiscount.amount;
     }
   }, [appliedDiscount, basePrice, quantity]);
@@ -133,7 +141,6 @@ const ProductPageClient = ({ product }: Props) => {
         return;
       }
 
-      //   validate discount code
       if (!data.is_active) {
         setDiscountError('This discount code is no longer active');
         setAppliedDiscount(null);
@@ -170,7 +177,7 @@ const ProductPageClient = ({ product }: Props) => {
   };
 
   const handleAddToCart = async () => {
-    if (!allOptionsSelected || !userId) return;
+    if (!allOptionsSelected || !userId || !orderNo.trim()) return;
 
     setIsSubmitting(true);
     try {
@@ -237,7 +244,6 @@ const ProductPageClient = ({ product }: Props) => {
               )}
             </div>
 
-            {/* RIGHT: Config Options */}
             <div className="flex-1">
               <div className="mb-8">
                 <h2 className="text-2xl font-bold text-slate-900 mb-2">
@@ -249,12 +255,10 @@ const ProductPageClient = ({ product }: Props) => {
                 </p>
               </div>
 
-              {/* Product Name */}
               <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-6">
                 {product.name}
               </h1>
 
-              {/* Dynamic Grid of Dropdowns */}
               <div className={`grid ${getGridClass()} gap-6 mb-8`}>
                 {product.product_menus.map((menu, index) => {
                   const isSelected = selectedOptions[menu.id] !== null;
@@ -285,14 +289,17 @@ const ProductPageClient = ({ product }: Props) => {
                         <option value="">Choose an option...</option>
                         {menu.product_menu_options.map((opt) => (
                           <option key={opt.id} value={opt.id}>
-                            {opt.option_name} (+SAR {opt.price.toFixed(2)})
+                            {opt.option_name} (+{opt.price_type === 'percentage' ? `${opt.price}%` : `SAR ${opt.price.toFixed(2)}`})
                           </option>
                         ))}
                       </select>
 
                       {isSelected && selectedOption && (
                         <p className="mt-2 text-sm text-blue-600 font-medium">
-                          ✓ {selectedOption.option_name} - SAR {selectedOption.price.toFixed(2)}
+                          ✓ {selectedOption.option_name} —{' '}
+                          {selectedOption.price_type === 'percentage'
+                            ? `${selectedOption.price}% of base`
+                            : `SAR ${selectedOption.price.toFixed(2)}`}
                         </p>
                       )}
                     </div>
@@ -344,7 +351,7 @@ const ProductPageClient = ({ product }: Props) => {
                         <p className="text-sm text-green-700">
                           {appliedDiscount.type === 'Percentage' 
                             ? `${appliedDiscount.amount}% off` 
-                            : `$${appliedDiscount.amount.toFixed(2)} off`}
+                            : `SAR ${appliedDiscount.amount.toFixed(2)} off`}
                         </p>
                       </div>
                     </div>
@@ -369,7 +376,6 @@ const ProductPageClient = ({ product }: Props) => {
 
               {/* Summary Bar */}
               <div className="border-t-2 border-slate-200 pt-8">
-                
                 <div className="mb-6 space-y-2">
                   <div className="flex justify-between text-slate-700">
                     <span>Subtotal:</span>
@@ -388,7 +394,6 @@ const ProductPageClient = ({ product }: Props) => {
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-                  
                   <div className="flex items-center gap-3">
                     <span className="text-lg font-semibold text-slate-700">Quantity:</span>
                     <div className="flex items-center border rounded-lg overflow-hidden">
@@ -415,27 +420,28 @@ const ProductPageClient = ({ product }: Props) => {
                   </div>
                   
                   <div className="flex items-center gap-3">
-                    <label className="text-lg font-semibold text-slate-700">Order Number</label>
+                    <label className="text-lg font-semibold text-slate-700">Order Number <span className="text-red-500">*</span></label>
                     <input
                       type="text"
                       value={orderNo}
                       onChange={(e) => setOrderNo(e.target.value)}
                       inputMode="numeric" 
                       placeholder="Order Number"
+                      required
                       className="w-40 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
 
                   <button
                     onClick={handleAddToCart}
-                    disabled={!allOptionsSelected || isSubmitting || !userId}
-                    className={`px-8 py-4 rounded-xl font-bold text-lg transition-all duration-200 min-w-[200px] ${
-                      allOptionsSelected && !isSubmitting && userId
+                    disabled={!allOptionsSelected || isSubmitting || !userId || !orderNo.trim()}
+                    className={`px-8 py-4 rounded-xl font-bold text-sm transition-all duration-200 min-w-[200px] ${
+                      allOptionsSelected && !isSubmitting && userId && orderNo.trim()
                         ? 'bg-[#636255] hover:bg-yellow-500 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
                         : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                     }`}
                   >
-                    {isSubmitting ? 'Adding...' : !userId ? 'Login Required' : allOptionsSelected ? 'Add to Cart' : `Select ${product.product_menus.filter((m) => !selectedOptions[m.id]).length} More`}
+                    {isSubmitting ? 'Adding...' : !userId ? 'Login Required' : !orderNo.trim() ? 'Enter Order Number' : allOptionsSelected ? 'Add to Cart' : `Select ${product.product_menus.filter((m) => !selectedOptions[m.id]).length} More`}
                   </button>
                 </div>
               </div>

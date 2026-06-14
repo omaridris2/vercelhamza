@@ -2,11 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+
 type CubeType = "Roland" | "Digital" | "Sign" | "Laser" | "Wood" | "Reprint" | "UV";
+type PriceType = "fixed" | "percentage";
+
 type Menu = {
   id?: number;
   name: string;
-  options: { id?: number; option: string; price: number }[];
+  options: { id?: number; option: string; price: number; price_type: PriceType }[];
 };
 
 type ProductData = {
@@ -21,6 +24,7 @@ type ProductData = {
       id: number;
       option_name: string;
       price: number;
+      price_type: PriceType;
     }[];
   }[];
 };
@@ -44,21 +48,19 @@ const AddPrintForm = ({ onClose, onSuccess, editMode = false, productData }: Add
   const [keepExistingImage, setKeepExistingImage] = useState(true);
   const [type, setType] = useState<CubeType | "">("");
 
-  // Initialize form with existing data in edit mode
   useEffect(() => {
     if (editMode && productData) {
       setName(productData.name);
       setType(productData.type as CubeType);
       setPreviewUrl(productData.image_url);
-      
-      // Transform product menus to form format
       const transformedMenus = productData.product_menus.map(menu => ({
         id: menu.id,
         name: menu.name,
         options: menu.product_menu_options.map(opt => ({
           id: opt.id,
           option: opt.option_name,
-          price: opt.price
+          price: opt.price,
+          price_type: opt.price_type ?? 'fixed',
         }))
       }));
       setMenus(transformedMenus);
@@ -67,77 +69,48 @@ const AddPrintForm = ({ onClose, onSuccess, editMode = false, productData }: Add
 
   useEffect(() => {
     return () => {
-      if (previewUrl && !editMode) {
-        URL.revokeObjectURL(previewUrl);
-      }
+      if (previewUrl && !editMode) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl, editMode]);
 
   const validateFile = (file: File): string | null => {
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    const maxSize = 5 * 1024 * 1024;
-
-    if (!allowedTypes.includes(file.type)) {
-      return 'Please select a valid image file (JPEG, PNG, or WebP)';
-    }
-
-    if (file.size > maxSize) {
-      return 'Image size must be less than 5MB';
-    }
-
+    if (!allowedTypes.includes(file.type)) return 'Please select a valid image file (JPEG, PNG, or WebP)';
+    if (file.size > 5 * 1024 * 1024) return 'Image size must be less than 5MB';
     return null;
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-
-    if (previewUrl && !editMode) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
-    }
-
+    if (previewUrl && !editMode) { URL.revokeObjectURL(previewUrl); setPreviewUrl(null); }
     if (file) {
       const validationError = validateFile(file);
-      if (validationError) {
-        setError(validationError);
-        setImageFile(null);
-        return;
-      }
-
+      if (validationError) { setError(validationError); setImageFile(null); return; }
       setImageFile(file);
       setKeepExistingImage(false);
       setError(null);
-
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
+      setPreviewUrl(URL.createObjectURL(file));
     }
   };
 
   const generateFileName = (file: File): string => {
     const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const timestamp = Date.now();
-    const randomStr = Math.random().toString(36).substring(2, 8);
-    return `product_${timestamp}_${randomStr}.${fileExt}`;
+    return `product_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
   };
 
-  const addMenu = () => {
-    setMenus([...menus, { name: '', options: [{ option: '', price: 0 }] }]);
-  };
+  const addMenu = () => setMenus([...menus, { name: '', options: [{ option: '', price: 0, price_type: 'fixed' }] }]);
 
-  const removeMenu = (menuIndex: number) => {
-    const updated = menus.filter((_, index) => index !== menuIndex);
-    setMenus(updated);
-  };
+  const removeMenu = (menuIndex: number) => setMenus(menus.filter((_, i) => i !== menuIndex));
 
   const addOption = (menuIndex: number) => {
     const updated = [...menus];
-    updated[menuIndex].options.push({ option: '', price: 0 });
+    updated[menuIndex].options.push({ option: '', price: 0, price_type: 'fixed' });
     setMenus(updated);
   };
 
   const removeOption = (menuIndex: number, optionIndex: number) => {
     const updated = [...menus];
-    updated[menuIndex].options = updated[menuIndex].options.filter((_, index) => index !== optionIndex);
+    updated[menuIndex].options = updated[menuIndex].options.filter((_, i) => i !== optionIndex);
     setMenus(updated);
   };
 
@@ -147,10 +120,18 @@ const AddPrintForm = ({ onClose, onSuccess, editMode = false, productData }: Add
     setMenus(updated);
   };
 
-  const updateOption = (menuIndex: number, optionIndex: number, field: 'option' | 'price', value: string) => {
+  const updateOption = (
+    menuIndex: number,
+    optionIndex: number,
+    field: 'option' | 'price' | 'price_type',
+    value: string
+  ) => {
     const updated = [...menus];
     if (field === 'price') {
       updated[menuIndex].options[optionIndex].price = parseFloat(value) || 0;
+    } else if (field === 'price_type') {
+      updated[menuIndex].options[optionIndex].price_type = value as PriceType;
+      updated[menuIndex].options[optionIndex].price = 0; // reset price on type switch
     } else {
       updated[menuIndex].options[optionIndex].option = value;
     }
@@ -159,21 +140,9 @@ const AddPrintForm = ({ onClose, onSuccess, editMode = false, productData }: Add
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!name.trim()) {
-      setError('Product name is required');
-      return;
-    }
-
-    if (!editMode && !imageFile) {
-      setError('Product image is required');
-      return;
-    }
-
-    if (editMode && !keepExistingImage && !imageFile) {
-      setError('Please select a new image or keep the existing one');
-      return;
-    }
+    if (!name.trim()) { setError('Product name is required'); return; }
+    if (!editMode && !imageFile) { setError('Product image is required'); return; }
+    if (editMode && !keepExistingImage && !imageFile) { setError('Please select a new image or keep the existing one'); return; }
 
     setLoading(true);
     setError(null);
@@ -185,192 +154,91 @@ const AddPrintForm = ({ onClose, onSuccess, editMode = false, productData }: Add
         const fileName = generateFileName(imageFile);
         const { error: uploadError, data: uploadData } = await supabase.storage
           .from('product-images')
-          .upload(fileName, imageFile, {
-            cacheControl: '3600',
-            upsert: false
-          });
-
-        if (uploadError) {
-          throw new Error(`Upload failed: ${uploadError.message}`);
-        }
-
-        if (!uploadData?.path) {
-          throw new Error('Upload succeeded but no file path returned');
-        }
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('product-images')
-          .getPublicUrl(uploadData.path);
-
-        if (!publicUrl) {
-          throw new Error('Failed to get public URL for uploaded image');
-        }
-
+          .upload(fileName, imageFile, { cacheControl: '3600', upsert: false });
+        if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+        if (!uploadData?.path) throw new Error('Upload succeeded but no file path returned');
+        const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(uploadData.path);
+        if (!publicUrl) throw new Error('Failed to get public URL for uploaded image');
         imageUrl = publicUrl;
-
         if (editMode && productData?.image_url) {
           const oldPath = productData.image_url.split('/').pop();
-          if (oldPath) {
-            await supabase.storage.from('product-images').remove([oldPath]);
-          }
+          if (oldPath) await supabase.storage.from('product-images').remove([oldPath]);
         }
       }
 
-      if (editMode && productData) {
-        // UPDATE MODE
-        const { error: productError } = await supabase
-          .from('products')
-          .update({ 
-            name: name.trim(), 
-            image_url: imageUrl,
-            type: type
-          })
-          .eq('id', productData.id);
-
-        if (productError) {
-          throw new Error(`Failed to update product: ${productError.message}`);
-        }
-
-        // Delete all existing menus and options
-        const { error: deleteError } = await supabase
-          .from('product_menus')
-          .delete()
-          .eq('product_id', productData.id);
-
-        if (deleteError) {
-          console.error('Error deleting old menus:', deleteError);
-        }
-
-        // Insert updated menus and options
+      const saveMenus = async (productId: number) => {
         for (const menu of menus) {
           if (!menu.name.trim()) continue;
-
           const { data: menuData, error: menuError } = await supabase
             .from('product_menus')
-            .insert([{ 
-              product_id: productData.id, 
-              name: menu.name.trim() 
-            }])
+            .insert([{ product_id: productId, name: menu.name.trim() }])
             .select()
             .single();
-
-          if (menuError) {
-            console.error('Menu insert error:', menuError);
-            continue;
-          }
-
+          if (menuError) { console.error('Menu insert error:', menuError); continue; }
           const validOptions = menu.options.filter(opt => opt.option.trim());
-          
           if (validOptions.length > 0) {
-            const optionsToInsert = validOptions.map(opt => ({
-              menu_id: menuData.id,
-              option_name: opt.option.trim(),
-              price: opt.price
-            }));
-
             const { error: optionsError } = await supabase
               .from('product_menu_options')
-              .insert(optionsToInsert);
-
-            if (optionsError) {
-              console.error('Options insert error:', optionsError);
-            }
+              .insert(validOptions.map(opt => ({
+                menu_id: menuData.id,
+                option_name: opt.option.trim(),
+                price: opt.price,
+                price_type: opt.price_type,
+              })));
+            if (optionsError) console.error('Options insert error:', optionsError);
           }
         }
+      };
+
+      if (editMode && productData) {
+        const { error: productError } = await supabase
+          .from('products')
+          .update({ name: name.trim(), image_url: imageUrl, type })
+          .eq('id', productData.id);
+        if (productError) throw new Error(`Failed to update product: ${productError.message}`);
+        const { error: deleteError } = await supabase
+          .from('product_menus').delete().eq('product_id', productData.id);
+        if (deleteError) console.error('Error deleting old menus:', deleteError);
+        await saveMenus(productData.id);
       } else {
-        // CREATE MODE (original logic)
         const { data: product, error: productError } = await supabase
           .from('products')
-          .insert([{ 
-            name: name.trim(), 
-            image_url: imageUrl ,
-            type: type
-          }])
+          .insert([{ name: name.trim(), image_url: imageUrl, type }])
           .select('*')
           .single();
-
         if (productError) {
           if (imageFile) {
             const fileName = imageUrl?.split('/').pop();
-            if (fileName) {
-              await supabase.storage.from('product-images').remove([fileName]);
-            }
+            if (fileName) await supabase.storage.from('product-images').remove([fileName]);
           }
           throw new Error(`Failed to save product: ${productError.message}`);
         }
-
-        for (const menu of menus) {
-          if (!menu.name.trim()) continue;
-
-          const { data: menuData, error: menuError } = await supabase
-            .from('product_menus')
-            .insert([{ 
-              product_id: product.id, 
-              name: menu.name.trim() 
-            }])
-            .select()
-            .single();
-
-          if (menuError) {
-            console.error('Menu insert error:', menuError);
-            continue;
-          }
-
-          const validOptions = menu.options.filter(opt => opt.option.trim());
-          
-          if (validOptions.length > 0) {
-            const optionsToInsert = validOptions.map(opt => ({
-              menu_id: menuData.id,
-              option_name: opt.option.trim(),
-              price: opt.price
-            }));
-
-            const { error: optionsError } = await supabase
-              .from('product_menu_options')
-              .insert(optionsToInsert);
-
-            if (optionsError) {
-              console.error('Options insert error:', optionsError);
-            }
-          }
-        }
+        await saveMenus(product.id);
       }
 
       resetForm();
       onSuccess?.();
       onClose();
-
     } catch (err: unknown) {
       console.error('Error saving product:', err);
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('An unexpected error occurred');
-      }
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }
   };
 
   const resetForm = () => {
-    setName('');
-    setImageFile(null);
-    setMenus([]);
-    setError(null);
-    if (previewUrl && !editMode) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
-    }
+    setName(''); setImageFile(null); setMenus([]); setError(null);
+    if (previewUrl && !editMode) { URL.revokeObjectURL(previewUrl); setPreviewUrl(null); }
   };
 
-  const handleCancel = () => {
-    resetForm();
-    onClose();
-  };
+  const handleCancel = () => { resetForm(); onClose(); };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50 p-4 backdrop-blur-sm"
-         onClick={(e) => e.target === e.currentTarget && handleCancel()}>
+    <div
+      className="fixed inset-0 flex items-center justify-center bg-black/60 z-50 p-4 backdrop-blur-sm"
+      onClick={(e) => e.target === e.currentTarget && handleCancel()}
+    >
       <div className="bg-white rounded-3xl shadow-2xl p-8 border-0 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -395,69 +263,44 @@ const AddPrintForm = ({ onClose, onSuccess, editMode = false, productData }: Add
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="grid md:grid-cols-2 gap-8">
             <div className="space-y-2">
-              <label htmlFor="productName" className="block text-sm font-semibold text-gray-800">
-                Product Name *
-              </label>
-              
+              <label htmlFor="productName" className="block text-sm font-semibold text-gray-800">Product Name *</label>
               <input
-                id="productName"
-                type="text"
-                value={name}
+                id="productName" type="text" value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 disabled:bg-gray-50 disabled:text-gray-500 transition-all duration-200"
-                placeholder="Enter a descriptive product name"
-                maxLength={100}
-                required
-                disabled={loading}
+                placeholder="Enter a descriptive product name" maxLength={100} required disabled={loading}
               />
             </div>
             <div className="space-y-2">
-  <label htmlFor="productType" className="block text-sm font-semibold text-gray-800">
-     Type *
-  </label>
-  <select
-    id="productType"
-    value={type}
-    onChange={(e) => setType(e.target.value as CubeType)}
-    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 disabled:bg-gray-50 disabled:text-gray-500 transition-all duration-200"
-    required
-    disabled={loading}
-  >
-    <option value="">Select type</option>
-    {CUBE_TYPES.map((t) => (
-      <option key={t} value={t}>
-        {t}
-      </option>
-    ))}
-  </select>
-</div>
-
+              <label htmlFor="productType" className="block text-sm font-semibold text-gray-800">Type *</label>
+              <select
+                id="productType" value={type}
+                onChange={(e) => setType(e.target.value as CubeType)}
+                className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 disabled:bg-gray-50 disabled:text-gray-500 transition-all duration-200"
+                required disabled={loading}
+              >
+                <option value="">Select type</option>
+                {CUBE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
             <div className="space-y-2">
               <label htmlFor="productImage" className="block text-sm font-semibold text-gray-800">
                 Product Image {!editMode && '*'}
               </label>
               <div className="relative">
                 <input
-                  id="productImage"
-                  type="file"
+                  id="productImage" type="file"
                   accept="image/jpeg,image/jpg,image/png,image/webp"
                   onChange={handleImageChange}
                   className="w-full text-sm text-gray-600 file:mr-4 file:py-3 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gradient-to-r file:from-yellow-50 file:to-orange-50 file:text-yellow-700 hover:file:from-yellow-100 hover:file:to-orange-100 disabled:opacity-50 transition-all duration-200"
                   disabled={loading}
                 />
               </div>
-              <p className="text-xs text-gray-500">
-                Supported: JPEG, PNG, WebP • Max size: 5MB
-              </p>
-              
+              <p className="text-xs text-gray-500">Supported: JPEG, PNG, WebP • Max size: 5MB</p>
               {previewUrl && (
                 <div className="mt-4">
                   <div className="relative inline-block">
-                    <img
-                      src={previewUrl}
-                      alt="Product preview"
-                      className="w-32 h-32 object-cover rounded-xl border-2 border-gray-200 shadow-md"
-                    />
+                    <img src={previewUrl} alt="Product preview" className="w-32 h-32 object-cover rounded-xl border-2 border-gray-200 shadow-md" />
                     <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
                       <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -476,8 +319,7 @@ const AddPrintForm = ({ onClose, onSuccess, editMode = false, productData }: Add
                 <p className="text-sm text-gray-500">Add dropdown menus for size, color, variations, etc.</p>
               </div>
               <button
-                type="button"
-                onClick={addMenu}
+                type="button" onClick={addMenu}
                 className="px-6 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:transform-none"
                 disabled={loading}
               >
@@ -489,7 +331,7 @@ const AddPrintForm = ({ onClose, onSuccess, editMode = false, productData }: Add
                 </span>
               </button>
             </div>
-            
+
             <div className="grid gap-6 md:grid-cols-2">
               {menus.map((menu, menuIndex) => (
                 <div key={menuIndex} className="border-2 border-gray-200 rounded-2xl p-6 bg-gradient-to-br from-gray-50 to-white shadow-sm hover:shadow-md transition-all duration-200">
@@ -506,8 +348,7 @@ const AddPrintForm = ({ onClose, onSuccess, editMode = false, productData }: Add
                       disabled={loading}
                     />
                     <button
-                      type="button"
-                      onClick={() => removeMenu(menuIndex)}
+                      type="button" onClick={() => removeMenu(menuIndex)}
                       className="w-8 h-8 rounded-full bg-red-100 hover:bg-red-200 text-red-600 hover:text-red-700 flex items-center justify-center transition-all duration-200"
                       disabled={loading}
                     >
@@ -516,35 +357,70 @@ const AddPrintForm = ({ onClose, onSuccess, editMode = false, productData }: Add
                       </svg>
                     </button>
                   </div>
-                  
+
                   <div className="space-y-3">
                     {menu.options.map((opt, optionIndex) => (
-                      <div key={optionIndex} className="flex gap-2">
+                      <div key={optionIndex} className="flex gap-2 items-center">
                         <input
                           type="text"
-                          placeholder="Option (e.g., Small, Red, Cotton)"
+                          placeholder="Option name"
                           value={opt.option}
                           onChange={(e) => updateOption(menuIndex, optionIndex, 'option', e.target.value)}
-                          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 disabled:bg-gray-50"
+                          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 disabled:bg-gray-50 min-w-0"
                           disabled={loading}
                         />
-                        <div className="relative">
-  <input
-    type="number"
-    placeholder="0.00"
-    step="0.01"
-    min="0"
-    value={opt.price}
-    onChange={(e) => updateOption(menuIndex, optionIndex, 'price', e.target.value)}
-    className="w-24 border border-gray-300 rounded-lg px-3 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 disabled:bg-gray-50"
-    disabled={loading}
-  />
-  <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs font-semibold">SAR</span>
-</div>
+
+                        {/* Price type toggle */}
+                        <div className="flex rounded-lg border border-gray-300 overflow-hidden shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => updateOption(menuIndex, optionIndex, 'price_type', 'fixed')}
+                            className={`px-2 py-2 text-xs font-semibold transition-colors duration-150 ${
+                              opt.price_type === 'fixed'
+                                ? 'bg-yellow-500 text-white'
+                                : 'bg-white text-gray-500 hover:bg-gray-50'
+                            }`}
+                            disabled={loading}
+                            title="Fixed price (SAR)"
+                          >
+                            SAR
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateOption(menuIndex, optionIndex, 'price_type', 'percentage')}
+                            className={`px-2 py-2 text-xs font-semibold transition-colors duration-150 border-l border-gray-300 ${
+                              opt.price_type === 'percentage'
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-white text-gray-500 hover:bg-gray-50'
+                            }`}
+                            disabled={loading}
+                            title="Percentage of base price"
+                          >
+                            %
+                          </button>
+                        </div>
+
+                        {/* Price input */}
+                        <div className="relative shrink-0">
+                          <input
+                            type="number"
+                            placeholder={opt.price_type === 'percentage' ? '0' : '0.00'}
+                            step={opt.price_type === 'percentage' ? '1' : '0.01'}
+                            min="0"
+                            max={opt.price_type === 'percentage' ? '100' : undefined}
+                            value={opt.price}
+                            onChange={(e) => updateOption(menuIndex, optionIndex, 'price', e.target.value)}
+                            className="w-20 border border-gray-300 rounded-lg px-2 py-2 pr-6 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 disabled:bg-gray-50 text-sm"
+                            disabled={loading}
+                          />
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold pointer-events-none">
+                            {opt.price_type === 'percentage' ? '%' : ''}
+                          </span>
+                        </div>
+
                         <button
-                          type="button"
-                          onClick={() => removeOption(menuIndex, optionIndex)}
-                          className="w-10 h-10 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-600 flex items-center justify-center transition-all duration-200"
+                          type="button" onClick={() => removeOption(menuIndex, optionIndex)}
+                          className="w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-600 flex items-center justify-center transition-all duration-200 shrink-0"
                           disabled={loading}
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -553,10 +429,9 @@ const AddPrintForm = ({ onClose, onSuccess, editMode = false, productData }: Add
                         </button>
                       </div>
                     ))}
-                    
+
                     <button
-                      type="button"
-                      onClick={() => addOption(menuIndex)}
+                      type="button" onClick={() => addOption(menuIndex)}
                       className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors duration-200"
                       disabled={loading}
                     >
@@ -597,8 +472,7 @@ const AddPrintForm = ({ onClose, onSuccess, editMode = false, productData }: Add
 
           <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
             <button
-              type="button"
-              onClick={handleCancel}
+              type="button" onClick={handleCancel}
               className="px-6 py-3 text-gray-700 border-2 border-gray-300 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
               disabled={loading}
             >
