@@ -445,6 +445,7 @@ const ProductPageClient = ({ product }: Props) => {
                   </button>
                 </div>
               </div>
+              
             </div>
           </div>
         </div>
