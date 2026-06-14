@@ -28,9 +28,9 @@ interface PageProps {
 }
 
 export default async function ProductPage({ params }: PageProps) {
-  const productId = Number(params.id);
+  const { id: productId } = await params;
 
-  if (isNaN(productId)) {
+  if (!productId) {
     return <div className="p-6 text-center">Invalid Product ID</div>;
   }
 
