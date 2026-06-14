@@ -21,6 +21,7 @@ type ProductData = {
       id: number;
       option_name: string;
       price: number;
+      price_type: 'fixed' | 'percentage';
     }[];
   }[];
 };
@@ -70,7 +71,8 @@ const PrintTypesMenu = ({ filterType }: PrintTypesMenuProps) => {
           product_menu_options (
             id,
             option_name,
-            price
+            price,
+            price_type
           )
         )
       `)
